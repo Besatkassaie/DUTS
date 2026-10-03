@@ -11,3 +11,8 @@ experiments/results/_baseline_scratch/
 # Claude Code local settings
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
+
+# Indexes and synopses built by main.py (default --index-path)
+artifacts/
+# main.py run outputs (default --output-dir)
+experiments/results/main/

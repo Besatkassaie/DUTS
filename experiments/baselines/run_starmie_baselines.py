@@ -18,6 +18,7 @@ import json
 import multiprocessing as mp
 import os
 import sys
+from typing import NamedTuple, Sequence
 
 import numpy as np
 
@@ -28,6 +29,38 @@ KS = (5, 10, 20)
 N, SIGMA, F_STAR, DELTA = 1000, 0.6, 0.4, 0.1
 
 _S = {}
+
+
+class Settings(NamedTuple):
+    """Everything ``_init``/``_one`` need. ``settings_for`` gives the values this script has always
+    used; ``experiments/entry`` (``main.py``) builds one from user-supplied paths instead."""
+    bench: str
+    approach: str
+    starmie_root: str
+    datalake_vec_pkl: str
+    query_vec_pkl: str
+    query_dir: str
+    datalake_dir: str
+    metadata_dir: str          # must contain metadata_combined.pkl
+    groundtruth_csv: str
+    scratch_dir: str           # HNSWSearcher_Fair writes its index here (one subdirectory per worker)
+    ks: Sequence[int] = KS
+    n: int = N
+    sigma: float = SIGMA
+    f_star: float = F_STAR
+    delta: float = DELTA
+
+
+def settings_for(bench: str, approach: str) -> Settings:
+    from experiments.context import paths_for
+    from experiments.fair3.eval_fair3 import gt_path
+    p = paths_for(bench)
+    root = os.path.dirname(p.query_dir)
+    return Settings(bench=bench, approach=approach, starmie_root=STARMIE,
+                    datalake_vec_pkl=p.datalake_vec_pkl, query_vec_pkl=p.query_vec_pkl,
+                    query_dir=p.query_dir, datalake_dir=p.datalake_dir,
+                    metadata_dir=os.path.join(root, "indexes"), groundtruth_csv=gt_path(bench, p),
+                    scratch_dir=os.path.join(RESULTS, "_baseline_scratch"))
 
 
 def _patch_starmie():
@@ -48,33 +81,32 @@ def _patch_starmie():
     return orig_read
 
 
-def _init(bench, approach):
-    os.chdir(STARMIE)
+def _init(st: Settings):
+    if st.starmie_root not in sys.path:
+        sys.path.insert(0, st.starmie_root)
+    os.chdir(st.starmie_root)
     _patch_starmie()
     from HNSWSearcher_Fair import HNSWSearcher_Fair
     from dutsx import registry
     from dutsx.adapters.unionability import load_starmie_vectors
-    from experiments.context import paths_for
-    from experiments.fair3.eval_fair3 import gt_path
     from experiments.groundtruth import load_groundtruth
     import pickle
-    p = paths_for(bench)
-    root = os.path.dirname(p.query_dir)
-    scratch = os.path.join(RESULTS, "_baseline_scratch", "%s_%d" % (bench, os.getpid()))
+    scratch = os.path.join(st.scratch_dir, "%s_%d" % (st.bench, os.getpid()))
     os.makedirs(scratch, exist_ok=True)
     with contextlib.redirect_stdout(io.StringIO()):
         s = HNSWSearcher_Fair(
-            p.datalake_vec_pkl, os.path.join(scratch, "hnsw.bin"), p.query_dir, p.datalake_dir, 1.0,
-            random_seed=42, load_metadata=True, metadata_dir=os.path.join(root, "indexes"),
-            delta=DELTA, target_fairness=F_STAR)
-    q_vecs = load_starmie_vectors(p.query_vec_pkl)
-    dl_vecs = load_starmie_vectors(p.datalake_vec_pkl)
+            st.datalake_vec_pkl, os.path.join(scratch, "hnsw.bin"), st.query_dir, st.datalake_dir, 1.0,
+            random_seed=42, load_metadata=True, metadata_dir=st.metadata_dir,
+            delta=st.delta, target_fairness=st.f_star)
+    q_vecs = load_starmie_vectors(st.query_vec_pkl)
+    dl_vecs = load_starmie_vectors(st.datalake_vec_pkl)
     _S.update(
-        searcher=s, approach=approach, bench=bench, truth=load_groundtruth(gt_path(bench, p)),
+        searcher=s, approach=st.approach, bench=st.bench, truth=load_groundtruth(st.groundtruth_csv),
         tvec={t[0]: t[1] for t in s.tables},
-        queries={q[0]: q for q in pickle.load(open(p.query_vec_pkl, "rb"))},
+        queries={q[0]: q for q in pickle.load(open(st.query_vec_pkl, "rb"))},
         scorer=registry.build("unionability", "pinned_match", query_vectors=q_vecs, candidate_vectors=dl_vecs,
-                              threshold=SIGMA),
+                              threshold=st.sigma),
+        ks=tuple(st.ks), n=st.n, sigma=st.sigma, f_star=st.f_star, delta=st.delta,
     )
 
 
@@ -84,10 +116,11 @@ def _one(args):
     from utility import fairness_delta_exceeds
     q_name, p_id, value = args
     s, approach, truth = _S["searcher"], _S["approach"], _S["truth"]
+    N, SIGMA, F_STAR, DELTA = _S["n"], _S["sigma"], _S["f_star"], _S["delta"]
     q = _S["queries"][q_name]
     gt = truth.get(q_name, frozenset())
     rows = []
-    for K in KS:
+    for K in _S["ks"]:
         extras = {}
         with contextlib.redirect_stdout(io.StringIO()):
             if approach == "starmie":
@@ -145,7 +178,7 @@ def run(bench, approach, limit=None, workers=1):
         qs = qs[:limit]
     print("[%s/%s] %d queries, %d workers" % (bench, approach, len(qs), workers), flush=True)
     rows = []
-    with mp.get_context("fork").Pool(workers, initializer=_init, initargs=(bench, approach)) as pool:
+    with mp.get_context("fork").Pool(workers, initializer=_init, initargs=(settings_for(bench, approach),)) as pool:
         for i, r in enumerate(pool.imap_unordered(_one, qs), 1):
             rows.extend(r)
             if i % 10 == 0 or i == len(qs):

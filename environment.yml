@@ -1,0 +1,11 @@
+# conda env create -f environment.yml && conda activate duts
+# Recreates the environment the reported results were produced with (TableUnionNew).
+name: duts
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.8.5
+  - pip
+  - pip:
+      - -r requirements.txt

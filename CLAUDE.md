@@ -53,6 +53,14 @@ $PY -m pyflakes duts tests                    # lint (pytest and pyflakes were p
                                                # into TableUnionNew during Phase 0; not preinstalled)
 ```
 
+**Release entry point: `python main.py`** (`ExperimentApp` in `experiments/entry/app.py`; user docs in
+`README.md`). Prompts for missing parameters, checks prerequisites (`experiments/entry/prereqs.py`),
+builds missing embeddings / synopsis / DUTS HNSW index on confirmation and exits 3 asking for a
+rerun, then runs `duts` or a Starmie baseline and prints results + execution environment. DUTS goes
+through `dutsx.runner.run_query`; baselines reuse `run_starmie_baselines._init/_one` via its
+`Settings` tuple. On santos3 (k=10, α=5) it reproduces `fair3-report.md` exactly (39/48, P 0.810,
+R 0.3005). Tests: `tests/test_entry.py`. Pinned deps: `requirements.txt` / `environment.yml`.
+
 No build step — it's a pure-Python library, no packaging config, imported as `duts.<module>`.
 `pytest.ini` sets `pythonpath = .` so `import duts` and `import tests.oracle` both resolve without
 installing the package.

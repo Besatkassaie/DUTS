@@ -19,11 +19,14 @@ import pickle
 CACHE_DIR = os.environ.get("DUTS_HNSW_CACHE", "/u6/bkassaie/wdc_data/cache")
 
 
-def cache_paths(key: str, m: int, sigma: float, theta_cat: int):
-    os.makedirs(CACHE_DIR, exist_ok=True)
+def cache_paths(key: str, m: int, sigma: float, theta_cat: int, cache_dir: str = None,
+                create: bool = True):
+    cache_dir = cache_dir or CACHE_DIR
+    if create:
+        os.makedirs(cache_dir, exist_ok=True)
     stem = "{}_hnsw_m{}_tc{}_sig{}".format(key, m, theta_cat, str(sigma).replace(".", ""))
-    return (os.path.join(CACHE_DIR, stem + ".bin"),
-            os.path.join(CACHE_DIR, stem + ".meta.pkl"))
+    return (os.path.join(cache_dir, stem + ".bin"),
+            os.path.join(cache_dir, stem + ".meta.pkl"))
 
 
 def _load(index_path, meta_path, sigma, expect_n):
@@ -49,14 +52,23 @@ def _load(index_path, meta_path, sigma, expect_n):
     return r
 
 
-def get_or_build(key, semantic_vectors, sigma, theta_cat, m=32, verbose=True):
+def load_cached(key, semantic_vectors, sigma, theta_cat, m=32, cache_dir=None):
+    """The cached HNSW index for ``key``, or ``None`` if it is absent or stale. Never builds."""
+    index_path, meta_path = cache_paths(key, m, sigma, theta_cat, cache_dir, create=False)
+    if not (os.path.isfile(index_path) and os.path.isfile(meta_path)):
+        return None
+    return _load(index_path, meta_path, sigma, sum(len(v) for v in semantic_vectors.values()))
+
+
+def get_or_build(key, semantic_vectors, sigma, theta_cat, m=32, verbose=True, cache_dir=None,
+                 ef_construction=200):
     """Load the cached HNSW index for ``key``, or build it once and cache it.
 
     ``semantic_vectors`` is the already-filtered {table: ndarray} passed to HnswRetriever.
-    Returns an object satisfying ``ports.SemanticRetriever``.
+    ``cache_dir`` defaults to ``CACHE_DIR``. Returns an object satisfying ``ports.SemanticRetriever``.
     """
     from dutsx import registry
-    index_path, meta_path = cache_paths(key, m, sigma, theta_cat)
+    index_path, meta_path = cache_paths(key, m, sigma, theta_cat, cache_dir)
     expect_n = sum(len(v) for v in semantic_vectors.values())
 
     if os.path.isfile(index_path) and os.path.isfile(meta_path):
@@ -70,7 +82,8 @@ def get_or_build(key, semantic_vectors, sigma, theta_cat, m=32, verbose=True):
             print("[{}] cached HNSW is stale (expected {} items) -- rebuilding".format(
                 key, expect_n), flush=True)
 
-    r = registry.build("semantic", "hnsw", vectors=semantic_vectors, sigma=sigma)
+    r = registry.build("semantic", "hnsw", vectors=semantic_vectors, sigma=sigma, M=m,
+                       ef_construction=ef_construction)
     try:
         r.index.save_index(index_path)
         with open(meta_path, "wb") as f:
