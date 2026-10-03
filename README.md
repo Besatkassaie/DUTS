@@ -39,8 +39,7 @@ Tell the program where it is, once per shell:
 export STARMIE_FAIR_ROOT=/path/to/starmie_fair      # or pass --starmie-root on every run
 ```
 
-⚠️ Without either, the default is the authors' own path (`/u6/bkassaie/starmie_fair`), which will
-not exist on your machine; the prerequisite check then reports "Starmie checkout" as missing.
+If neither is set, the prerequisite check reports "Starmie checkout" as missing.
 
 ### 3. Benchmarks
 
