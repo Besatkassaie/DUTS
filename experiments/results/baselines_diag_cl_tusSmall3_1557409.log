@@ -1,0 +1,4 @@
+[tusSmall3] queries 92
+[tusSmall3] starmie    k=10 infeasible  88: no solution among candidates  49 | solution existed but not found  39
+[tusSmall3] exhaustive k=10 infeasible  48: no solution among candidates  48 | solution existed but not found   0
+[tusSmall3] nl         k=10 infeasible  59: no solution among candidates  48 | solution existed but not found  11

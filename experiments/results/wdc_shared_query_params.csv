@@ -1,0 +1,12 @@
+param,value
+top_n,5000
+ks,5;10;20
+alphas,5.0;10.0
+max_pool,200
+tau_floor,0.05
+delta,0.1
+tau,0.101
+F_star,0.201
+n_queries,67
+tier_10k_feasible,67/67
+tier_100k_feasible,67/67

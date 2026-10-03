@@ -1,0 +1,7 @@
+✓ Metadata loaded from /u6/bkassaie/starmie_fair/data/santos3/indexes/metadata_combined.pkl
+[santos3] ctx ready 2s; 48 queries (48 skipped)
+  [santos3 top_n=1000] 10/48 queries
+  [santos3 top_n=1000] 20/48 queries
+  [santos3 top_n=1000] 30/48 queries
+  [santos3 top_n=1000] 40/48 queries
+[santos3] wrote /u6/bkassaie/DUTS/experiments/results/fair3_eval_santos3_n1000.csv (288 rows), total 10s

@@ -1,0 +1,17 @@
+[tusLarge3/exhaustive] 142 queries, 8 workers
+  [tusLarge3/exhaustive] 10/142 queries
+  [tusLarge3/exhaustive] 20/142 queries
+  [tusLarge3/exhaustive] 30/142 queries
+  [tusLarge3/exhaustive] 40/142 queries
+  [tusLarge3/exhaustive] 50/142 queries
+  [tusLarge3/exhaustive] 60/142 queries
+  [tusLarge3/exhaustive] 70/142 queries
+  [tusLarge3/exhaustive] 80/142 queries
+  [tusLarge3/exhaustive] 90/142 queries
+  [tusLarge3/exhaustive] 100/142 queries
+  [tusLarge3/exhaustive] 110/142 queries
+  [tusLarge3/exhaustive] 120/142 queries
+  [tusLarge3/exhaustive] 130/142 queries
+  [tusLarge3/exhaustive] 140/142 queries
+  [tusLarge3/exhaustive] 142/142 queries
+[tusLarge3/exhaustive] wrote /u6/bkassaie/DUTS/experiments/results/baselines_tusLarge3_exhaustive.csv (426 rows); elapsed 184s; peak child rss 4.8GB

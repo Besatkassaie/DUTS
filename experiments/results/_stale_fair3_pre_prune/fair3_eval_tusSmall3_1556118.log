@@ -1,0 +1,22 @@
+✓ Metadata loaded from /u6/bkassaie/starmie_fair/data/tusSmall3/indexes/metadata_combined.pkl
+[tusSmall3] ctx ready 16s; 92 queries (0 skipped)
+  [tusSmall3 top_n=100] 10/92 queries
+  [tusSmall3 top_n=100] 20/92 queries
+  [tusSmall3 top_n=100] 30/92 queries
+  [tusSmall3 top_n=100] 40/92 queries
+  [tusSmall3 top_n=100] 50/92 queries
+  [tusSmall3 top_n=100] 60/92 queries
+  [tusSmall3 top_n=100] 70/92 queries
+  [tusSmall3 top_n=100] 80/92 queries
+  [tusSmall3 top_n=100] 90/92 queries
+[tusSmall3] wrote /u6/bkassaie/DUTS/experiments/results/fair3_eval_tusSmall3_n100.csv (552 rows), total 23s
+  [tusSmall3 top_n=1000] 10/92 queries
+  [tusSmall3 top_n=1000] 20/92 queries
+  [tusSmall3 top_n=1000] 30/92 queries
+  [tusSmall3 top_n=1000] 40/92 queries
+  [tusSmall3 top_n=1000] 50/92 queries
+  [tusSmall3 top_n=1000] 60/92 queries
+  [tusSmall3 top_n=1000] 70/92 queries
+  [tusSmall3 top_n=1000] 80/92 queries
+  [tusSmall3 top_n=1000] 90/92 queries
+[tusSmall3] wrote /u6/bkassaie/DUTS/experiments/results/fair3_eval_tusSmall3_n1000.csv (552 rows), total 65s

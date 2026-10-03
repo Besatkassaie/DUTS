@@ -1,0 +1,10 @@
+✓ Metadata loaded from /u6/bkassaie/wdc_data/indexes/tier_10k_metadata.pkl
+[tier_10k] ctx ready, 67 cohort queries
+  [tier_10k] 10/67
+  [tier_10k] 20/67
+  [tier_10k] 30/67
+  [tier_10k] 40/67
+  [tier_10k] 50/67
+  [tier_10k] 60/67
+[tier_10k] 67 rows, 0 excluded (|D|<k)
+wrote /u6/bkassaie/DUTS/experiments/results/stage1_benefit_tier_10k.csv 67

@@ -1,0 +1,4 @@
+[santos3] queries 48
+[santos3] starmie    k=10 infeasible  36: no solution among candidates   6 | solution existed but not found  30
+[santos3] exhaustive k=10 infeasible   6: no solution among candidates   6 | solution existed but not found   0
+[santos3] nl         k=10 infeasible  13: no solution among candidates   6 | solution existed but not found   7

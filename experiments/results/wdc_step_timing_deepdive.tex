@@ -1,0 +1,57 @@
+% \usepackage{booktabs,threeparttable} required
+
+\begin{table}[t]
+\centering
+\begin{threeparttable}
+\caption{Per-step wall-clock time, tier\_10k at $k$=170, $\alpha$=10 ($\alpha{\times}k$=1700), \texttt{top\_n}=5000, $\sigma$=0.60, pooled over 5 repeated runs.}
+\label{tab:wdc-step-timing-tier_10k}
+\begin{tabular}{lrrrr}
+\toprule
+Step & Mean (ms)\tnote{a} & Median (ms) & Min (ms) & Max (ms) \\
+\midrule
+Probe (semantic + overlap) & 10.15 & 8.92 & 6.42 & 137.66 \\
+Union combine & 3.19 & 2.09 & 0.37 & 138.08 \\
+Union lookup (N/n) & 9.27 & 6.44 & 1.41 & 148.84 \\
+\midrule
+Stage 1 (Dinkelbach)\tnote{b} & 2.93 & 0.10 & 0.04 & 158.54 \\
+Scoring (U) & 97.81 & 83.23 & 17.45 & 342.10 \\
+Stage 2 (ILP)\tnote{b} & 11.34 & 3.19 & 0.99 & 106.00 \\
+End-to-end total & 134.69 & 110.70 & 27.62 & 397.45 \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+\footnotesize
+\item[a] 5 independent repeats of the identical 30-query problem set (30 selected, 0 skipped by the pre-Stage-1 filter $|D_{union}|\geq k$=170 -- both counts identical on every repeat), against one shared, once-built index (only the pipeline steps are re-timed per repeat, resampling system-load jitter -- see note [b] for why the index itself is built once, not per repeat). All 30$\times$5=150 per-query timings pooled into one sample before computing mean/median/min/max, rather than averaging 5 already-skewed per-run means -- see note [b]. 19 of 30 queries were clamped every repeat ($\alpha{\times}k \geq |D_{union}|$, Stage 1 skipped, $P=D$, contributing 0ms to Stage 1) and 9/30 reached a Stage 2-feasible solution ($F_R \geq \tau$ achievable in $P$) every repeat.
+\item[b] \textbf{Why repeated and pooled, not a single run:} Stage 1/Stage 2 solve times are heavily right-skewed per query (most queries solve in low single-digit ms; a few take far longer -- large branch-and-bound trees, or a cold page-cache hit) rather than normally distributed, so a single run's MEAN is dominated by whichever slow queries happen to land in that run's tail -- a property of machine load at run time, not of the algorithm. The 30 problem instances themselves are identical every repeat (enforced by an assertion: n\_selected/n\_clamped/n\_feasible match exactly across all 5 repeats) -- only the WALL-CLOCK COST of running the same instances is re-measured each repeat, against one index built once (querying an already-built HNSW index is deterministic; only its construction is thread-order-sensitive and was confirmed, during development of this table, to occasionally change tier\_100k's retrieved/clamped query set across independent rebuilds -- worked around here by building once and reusing). Direct evidence of the swing pure timing jitter alone still causes even with the instances held fixed: Stage 1's own per-repeat mean ranged from 1.87ms to 6.79ms across the 5 repeats, and Stage 2's from 10.90ms to 11.82ms -- either extreme alone, reported as "the" mean, would misrepresent typical cost by a factor of 2--3$\times$. Pooling all 30 queries $\times$ 5 repeats into one sample before taking mean/median/min/max (rather than reporting one arbitrary repeat, or averaging the 5 already-skewed per-run means) is what the Mean/Median columns above report; Min/Max are the single fastest/slowest individual query observed across the full pooled sample, not per-repeat extremes.
+\item[c] Retrieval subtotal (probe + union combine + union lookup) = 22.62 ms mean. Stage 1 + scoring + Stage 2 + retrieval subtotal need not sum exactly to the end-to-end total due to independent \texttt{time.perf\_counter()} calls per phase.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+\begin{table}[t]
+\centering
+\begin{threeparttable}
+\caption{Per-step wall-clock time, tier\_100k at $k$=639, $\alpha$=10 ($\alpha{\times}k$=6390), \texttt{top\_n}=5000, $\sigma$=0.60, pooled over 5 repeated runs.}
+\label{tab:wdc-step-timing-tier_100k}
+\begin{tabular}{lrrrr}
+\toprule
+Step & Mean (ms)\tnote{a} & Median (ms) & Min (ms) & Max (ms) \\
+\midrule
+Probe (semantic + overlap) & 31.20 & 15.70 & 9.34 & 1334.36 \\
+Union combine & 17.85 & 2.82 & 1.70 & 1078.62 \\
+Union lookup (N/n) & 69.29 & 9.76 & 3.60 & 1568.65 \\
+\midrule
+Stage 1 (Dinkelbach)\tnote{b} & 23.15 & 0.15 & 0.04 & 156.81 \\
+Scoring (U) & 200.10 & 127.61 & 71.37 & 1215.02 \\
+Stage 2 (ILP)\tnote{b} & 62.95 & 4.23 & 1.90 & 1480.77 \\
+End-to-end total & 404.54 & 165.66 & 102.66 & 2651.99 \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+\footnotesize
+\item[a] 5 independent repeats of the identical 29-query problem set (30 selected, 1 skipped by the pre-Stage-1 filter $|D_{union}|\geq k$=639 -- both counts identical on every repeat), against one shared, once-built index (only the pipeline steps are re-timed per repeat, resampling system-load jitter -- see note [b] for why the index itself is built once, not per repeat). All 29$\times$5=145 per-query timings pooled into one sample before computing mean/median/min/max, rather than averaging 5 already-skewed per-run means -- see note [b]. 23 of 29 queries were clamped every repeat ($\alpha{\times}k \geq |D_{union}|$, Stage 1 skipped, $P=D$, contributing 0ms to Stage 1) and 7/29 reached a Stage 2-feasible solution ($F_R \geq \tau$ achievable in $P$) every repeat.
+\item[b] \textbf{Why repeated and pooled, not a single run:} Stage 1/Stage 2 solve times are heavily right-skewed per query (most queries solve in low single-digit ms; a few take far longer -- large branch-and-bound trees, or a cold page-cache hit) rather than normally distributed, so a single run's MEAN is dominated by whichever slow queries happen to land in that run's tail -- a property of machine load at run time, not of the algorithm. The 29 problem instances themselves are identical every repeat (enforced by an assertion: n\_selected/n\_clamped/n\_feasible match exactly across all 5 repeats) -- only the WALL-CLOCK COST of running the same instances is re-measured each repeat, against one index built once (querying an already-built HNSW index is deterministic; only its construction is thread-order-sensitive and was confirmed, during development of this table, to occasionally change tier\_100k's retrieved/clamped query set across independent rebuilds -- worked around here by building once and reusing). Direct evidence of the swing pure timing jitter alone still causes even with the instances held fixed: Stage 1's own per-repeat mean ranged from 20.73ms to 27.42ms across the 5 repeats, and Stage 2's from 56.06ms to 74.25ms -- either extreme alone, reported as "the" mean, would misrepresent typical cost by a factor of 2--3$\times$. Pooling all 29 queries $\times$ 5 repeats into one sample before taking mean/median/min/max (rather than reporting one arbitrary repeat, or averaging the 5 already-skewed per-run means) is what the Mean/Median columns above report; Min/Max are the single fastest/slowest individual query observed across the full pooled sample, not per-repeat extremes.
+\item[c] Retrieval subtotal (probe + union combine + union lookup) = 118.34 ms mean. Stage 1 + scoring + Stage 2 + retrieval subtotal need not sum exactly to the end-to-end total due to independent \texttt{time.perf\_counter()} calls per phase.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}

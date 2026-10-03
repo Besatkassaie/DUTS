@@ -1,0 +1,69 @@
+% \usepackage{booktabs,threeparttable} required
+
+\begin{table}[t]
+\centering
+\begin{threeparttable}
+\caption{Requested \texttt{top\_n} vs. retrieval yield from each index, actual union pool size, mean Dinkelbach iterations and wall-clock time, and skipped queries, tier\_10k, $\sigma=0.60$.}
+\label{tab:topn-vs-dunion-tier10k}
+\begin{tabular}{rrrrrrr}
+\toprule
+top\_n & $n_{sem}$\tnote{a} & $n_{ovl}$\tnote{a} & $|D_{union}|$\tnote{b} & Mean iters\tnote{c} & Mean time (ms)\tnote{c} & Skipped\tnote{d} \\
+\midrule
+500 & 500.0 & 926.7 & 602.3 & 0.980 & 0.742 & 0 \\
+1000 & 1000.0 & 926.7 & 736.2 & 1.418 & 0.915 & 0 \\
+2000 & 1957.8 & 926.7 & 1000.5 & 1.873 & 1.345 & 0 \\
+3000 & 2887.4 & 926.7 & 1253.1 & 2.112 & 2.016 & 0 \\
+4000 & 3763.5 & 926.7 & 1485.7 & 2.180 & 2.165 & 0 \\
+5000 & 4603.9 & 926.7 & 1702.8 & 2.242 & 2.537 & 0 \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+\footnotesize
+\item[e] \textbf{Regenerated 2026-08-14} after fixing \texttt{HnswRetriever} to index categorical
+  attributes only (\texttt{experiments/context.py::categorical\_only\_vectors}, applied in every
+  context builder) -- previously it indexed every column with a nonzero embedding, no
+  \texttt{theta\_cat} filter at all, so $n_{sem}$/$|D_{union}|$/iterations/time below are all
+  slightly different from (and supersede) the pre-fix numbers this table originally reported
+  (e.g. $|D_{union}|$ at \texttt{top\_n}=5000 was 1643.1, now 1702.8). $n_{ovl}$ is unchanged --
+  the overlap/posting-list index was already categorical-only and untouched by this fix.
+\item[a] $n_{sem}$, $n_{ovl}$: (table, attribute) pairs retrieved by the semantic (HNSW) and overlap (posting-list) indexes respectively, mean over 30 queries, before the per-table reduction that produces $D_{union}$. At the paper-matching $\sigma=0.60$ the similarity filter starts to bind as \texttt{top\_n} grows: $n_{sem}$ tracks \texttt{top\_n} closely through 1000, then falls increasingly short (4604 of 5000 requested, $\sim$92\%, at \texttt{top\_n}=5000) as the wider neighbor set reaches further into lower-similarity territory that no longer clears 0.60. $n_{ovl}$ does not depend on \texttt{top\_n} at all (the overlap posting-list scan only depends on the query's value set $M$).
+\item[b] $|D_{union}|$: distinct tables after the per-table $\arg\max$ reduction over $D_{sem} \cup D_{ovl}$ -- not $n_{sem}+n_{ovl}$, since (i) both counts are pairs, not tables, and (ii) the two sides overlap.
+\item[c] Mean over the 30 queries $\times$ 20 $\alpha{\times}k$ cells at that \texttt{top\_n}; clamped cells (pool size $\geq |D_{union}|$, Stage 1 skipped) counted as 0 iterations / 0\,ms -- Stage 1 genuinely did not run for those cells, not \"converged instantly\". See \texttt{wdc\_dinkelbach\_iterationByOutputSize.tex} for why averaging over these 20 cells is representative at this \texttt{top\_n} range (the pool-size effect on iteration count shrinks to $\sim$1.2$\times$ by \texttt{top\_n}=5000, vs. $\sim$3.8$\times$ at \texttt{top\_n}=500).
+\item[d] Queries dropped before Stage 1 for $|D_{union}| < \max(k) = 50$, out of 30.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+\begin{table}[t]
+\centering
+\begin{threeparttable}
+\caption{Requested \texttt{top\_n} vs. retrieval yield from each index, actual union pool size, mean Dinkelbach iterations and wall-clock time, and skipped queries, tier\_100k, $\sigma=0.60$.}
+\label{tab:topn-vs-dunion-tier100k}
+\begin{tabular}{rrrrrrr}
+\toprule
+top\_n & $n_{sem}$\tnote{a} & $n_{ovl}$\tnote{a} & $|D_{union}|$\tnote{b} & Mean iters\tnote{c} & Mean time (ms)\tnote{c} & Skipped\tnote{d} \\
+\midrule
+500 & 500.0 & 10009.0 & 5426.1 & 0.872 & 8.344 & 1 \\
+1000 & 1000.0 & 9675.4 & 5373.3 & 1.267 & 9.918 & 0 \\
+2000 & 2000.0 & 9675.4 & 5628.8 & 1.767 & 8.775 & 0 \\
+3000 & 3000.0 & 9675.4 & 5881.4 & 1.992 & 10.410 & 0 \\
+4000 & 4000.0 & 9675.4 & 6127.2 & 2.102 & 9.844 & 0 \\
+5000 & 5000.0 & 9675.4 & 6377.5 & 2.148 & 9.999 & 0 \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+\footnotesize
+\item[e] \textbf{Regenerated 2026-08-14} after fixing \texttt{HnswRetriever} to index categorical
+  attributes only (\texttt{experiments/context.py::categorical\_only\_vectors}, applied in every
+  context builder) -- previously it indexed every column with a nonzero embedding, no
+  \texttt{theta\_cat} filter at all, so $|D_{union}|$/iterations/time below are all slightly
+  different from (and supersede) the pre-fix numbers this table originally reported (e.g.
+  $|D_{union}|$ at \texttt{top\_n}=5000 was 6327.1, now 6377.5). $n_{sem}$/$n_{ovl}$ are unchanged
+  here -- the $\sigma=0.60$ gate never bound at this tier either before or after the fix.
+\item[a] $n_{sem}$, $n_{ovl}$: (table, attribute) pairs retrieved by the semantic (HNSW) and overlap (posting-list) indexes respectively, mean over 30 queries, before the per-table reduction that produces $D_{union}$. $n_{sem} = $ \texttt{top\_n} exactly at every setting here -- unlike tier\_10k, the $\sigma=0.60$ gate does not bind at this tier even at \texttt{top\_n}=5000 (tier-dependent; see the tier\_10k table's note [a]). $n_{ovl}$ does not depend on \texttt{top\_n} at all (the overlap posting-list scan only depends on the query's value set $M$).
+\item[b] $|D_{union}|$: distinct tables after the per-table $\arg\max$ reduction over $D_{sem} \cup D_{ovl}$ -- not $n_{sem}+n_{ovl}$, since (i) both counts are pairs, not tables, and (ii) the two sides overlap.
+\item[c] Mean over the 30 queries $\times$ 20 $\alpha{\times}k$ cells at that \texttt{top\_n}; clamped cells (pool size $\geq |D_{union}|$, Stage 1 skipped) counted as 0 iterations / 0\,ms -- Stage 1 genuinely did not run for those cells, not \"converged instantly\". See \texttt{wdc\_dinkelbach\_iterationByOutputSize.tex} for why averaging over these 20 cells is representative at this \texttt{top\_n} range (the pool-size effect on iteration count shrinks to $\sim$1.1$\times$ by \texttt{top\_n}=5000, vs. $\sim$5.9$\times$ at \texttt{top\_n}=2000).
+\item[d] Queries dropped before Stage 1 for $|D_{union}| < \max(k) = 50$, out of 30.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}

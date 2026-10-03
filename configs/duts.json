@@ -1,0 +1,9 @@
+{
+  "k": 10,
+  "alpha": 2,
+  "F_star": 0.5,
+  "delta": 0.05,
+  "include_query": true,
+  "seed": 42,
+  "objective": "max_f"
+}

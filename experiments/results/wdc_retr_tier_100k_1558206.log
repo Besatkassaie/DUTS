@@ -1,0 +1,9 @@
+✓ Metadata loaded from /u6/bkassaie/wdc_data/indexes/tier_100k_metadata.pkl
+[tier_100k] ctx ready rss 6.5GB
+  [tier_100k] 10/67 rss 6.5GB
+  [tier_100k] 20/67 rss 6.5GB
+  [tier_100k] 30/67 rss 6.5GB
+  [tier_100k] 40/67 rss 6.5GB
+  [tier_100k] 50/67 rss 6.5GB
+  [tier_100k] 60/67 rss 6.5GB
+wrote /u6/bkassaie/DUTS/experiments/results/wdc_retrieval_breakdown_tier_100k.csv 67 peak rss 7.4GB

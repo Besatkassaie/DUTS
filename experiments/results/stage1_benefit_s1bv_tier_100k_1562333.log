@@ -1,0 +1,8 @@
+✓ Metadata loaded from /u6/bkassaie/wdc_data/indexes/tier_100k_metadata.pkl
+[tier_100k] cached HNSW is stale (expected 518131 items) -- rebuilding
+[tier_100k] cached HNSW (487728 items) to /u6/bkassaie/wdc_data/cache/tier_100k_hnsw_m32_tc50_sig06.bin
+[tier_100k] ctx ready, 67 cohort queries
+  [tier_100k] 10/67
+  [tier_100k] 20/67
+  [tier_100k] 30/67
+slurmstepd: error: *** JOB 1562333 ON watgpu1008 CANCELLED AT 2026-09-23T16:33:00 ***

@@ -1,0 +1,57 @@
+✓ Metadata loaded from /u6/bkassaie/wdc_data/indexes/tier_10k_metadata.pkl
+[tier_10k] loaded cached HNSW (48857 items) from /u6/bkassaie/wdc_data/cache/tier_10k_hnsw_m32_tc50_sig06.bin
+[tier_10k] context built in 1.5s (10000 tables)
+  [tier_10k] top_n=5000: 67 ran, 0 clamped (of 67)
+  [tier_10k] top_n=10000: 67 ran, 0 clamped (of 67)
+  [tier_10k] top_n=15000: 67 ran, 0 clamped (of 67)
+  [tier_10k] top_n=20000: 67 ran, 0 clamped (of 67)
+  [tier_10k] top_n=25000: 67 ran, 0 clamped (of 67)
+  [tier_10k] top_n=30000: 67 ran, 0 clamped (of 67)
+✓ Metadata loaded from /u6/bkassaie/wdc_data/indexes/tier_100k_metadata.pkl
+[tier_100k] loaded cached HNSW (487728 items) from /u6/bkassaie/wdc_data/cache/tier_100k_hnsw_m32_tc50_sig06.bin
+[tier_100k] context built in 16.1s (100000 tables)
+  [tier_100k] top_n=5000: 67 ran, 0 clamped (of 67)
+  [tier_100k] top_n=10000: 67 ran, 0 clamped (of 67)
+  [tier_100k] top_n=15000: 67 ran, 0 clamped (of 67)
+  [tier_100k] top_n=20000: 67 ran, 0 clamped (of 67)
+  [tier_100k] top_n=25000: 67 ran, 0 clamped (of 67)
+  [tier_100k] top_n=30000: 67 ran, 0 clamped (of 67)
+[tier_1m] loading cached lean semantic index from /u6/bkassaie/wdc_data/cache/tier_1m_hnsw_lean_m16.bin
+✓ Metadata loaded from /u6/bkassaie/wdc_data/indexes/tier_1m_metadata.pkl
+[tier_1m] lean semantic index loaded from cache (4874987 items indexed)
+[tier_1m] lean context built in 113.2s
+  [tier_1m] top_n=5000: 66 ran, 1 clamped (of 67)
+  [tier_1m] top_n=10000: 66 ran, 1 clamped (of 67)
+  [tier_1m] top_n=15000: 66 ran, 1 clamped (of 67)
+  [tier_1m] top_n=20000: 66 ran, 1 clamped (of 67)
+  [tier_1m] top_n=25000: 66 ran, 1 clamped (of 67)
+  [tier_1m] top_n=30000: 66 ran, 1 clamped (of 67)
+
+wrote /u6/bkassaie/DUTS/experiments/results/wdc_topn_pool_sweep_k10_a3.csv (1206 rows)
+
+=== tier_10k (k=10, alpha=3.0, pool=30) ===
+   top_n    mean|D|      n_ran      mean_ms  mean_iter   iter_range
+    5000      387.4         67       0.8923       2.06          1-3 (clamped 0/67)
+   10000      618.2         67       1.2711       1.93          1-4 (clamped 0/67)
+   15000      775.7         67       1.6758       2.00          1-4 (clamped 0/67)
+   20000      853.1         67       1.7808       1.93          1-4 (clamped 0/67)
+   25000      876.8         67       1.8334       1.93          1-4 (clamped 0/67)
+   30000      881.4         67       1.8362       1.93          1-4 (clamped 0/67)
+
+=== tier_100k (k=10, alpha=3.0, pool=30) ===
+   top_n    mean|D|      n_ran      mean_ms  mean_iter   iter_range
+    5000      808.4         67       1.5436       1.75          1-3 (clamped 0/67)
+   10000     1274.8         67       2.5171       1.75          1-4 (clamped 0/67)
+   15000     1588.4         67       3.2145       1.81          1-4 (clamped 0/67)
+   20000     1929.0         67       4.1743       1.79          1-4 (clamped 0/67)
+   25000     2264.4         67       4.9920       1.82          1-4 (clamped 0/67)
+   30000     2517.9         67       5.5627       1.78          1-3 (clamped 0/67)
+
+=== tier_1m (k=10, alpha=3.0, pool=30) ===
+   top_n    mean|D|      n_ran      mean_ms  mean_iter   iter_range
+    5000     1071.4         66       1.9449       1.47          1-3 (clamped 1/67)
+   10000     1898.0         66       3.8583       1.48          1-4 (clamped 1/67)
+   15000     2840.6         66       6.2678       1.61          1-4 (clamped 1/67)
+   20000     3559.3         66       8.0826       1.52          1-4 (clamped 1/67)
+   25000     4355.4         66      10.3171       1.52          1-4 (clamped 1/67)
+   30000     5133.4         66      13.2249       1.61          1-4 (clamped 1/67)

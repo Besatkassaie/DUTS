@@ -1,0 +1,47 @@
+% \usepackage{booktabs,threeparttable} required
+
+\begin{table}[t]
+\centering
+\begin{threeparttable}
+\caption{Per-index build cost by WDC tier: attribute coverage, build time (excluding model
+inference), and on-disk size, for the HNSW semantic index and the posting-list (inverted-index)
+overlap filter.}
+\label{tab:wdc-index-cost}
+\begin{tabular}{lrrrr}
+\toprule
+& \multicolumn{2}{c}{HNSW\tnote{a}} & \multicolumn{2}{c}{Posting list\tnote{a}} \\
+\cmidrule(lr){2-3} \cmidrule(lr){4-5}
+Tier & Attrs indexed / total & Build (s) / size & Attrs indexed / total & Build (s) / size \\
+\midrule
+tier\_10k  & 48{,}857 / 51{,}854 (94.2\%)  & 3.49\,s / 163.6\,MB  & 48{,}857 / 51{,}854 (94.2\%)  & 0.50\,s / 8.8\,MB \\
+tier\_100k & 487{,}728 / 518{,}131 (94.1\%) & 51.00\,s / 1{,}633.0\,MB (1.59\,GB) & 487{,}728 / 518{,}131 (94.1\%) & 5.82\,s / 76.6\,MB \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+\footnotesize
+\item[a] Both indexes now cover exactly the same $(\text{table}, \text{attr})$ population --
+  categorical attributes only ($\theta_{cat}=50$-bounded \texttt{synopsis.categorical\_attrs}),
+  identical counts in both columns at each tier. This required a fix: \texttt{HnswRetriever}
+  (\texttt{dutsx/adapters/semantic.py}) has no categorical filter of its own -- by default it
+  indexes every column with a nonzero embedding, so it previously covered 100\% of attributes
+  (all 51{,}854 / 518{,}131) while the posting list covered only the categorical $\sim$94\%. Fixed
+  by zeroing each non-categorical column's embedding vector before it reaches
+  \texttt{HnswRetriever} (\texttt{experiments/context.py::categorical\_only\_vectors}, applied in
+  every context builder -- WDC and santos-family alike, not WDC-specific). Build time is index
+  construction only (\texttt{hnswlib.Index.add\_items} / posting-list population), excluding the
+  vectors-pkl load and the synopsis build (both reported separately below) and excluding embedding
+  extraction, a one-time offline GPU step timed separately (tier\_10k:
+  \texttt{vectors/tier\_10k\_roberta.timing.json}; tier\_100k: same,
+  \texttt{tier\_100k\_roberta.timing.json}) and never included here. HNSW size on disk is
+  \texttt{hnswlib}'s native serialized index (\texttt{save\_index}), measured directly. The
+  posting list has no native on-disk format (a plain Python
+  \texttt{dict[value $\to$ set[(table,attr)]]}, rebuilt in memory on every run); its size is that
+  structure pickled to disk as a representative proxy, \emph{not} a purpose-built binary format --
+  not directly comparable to HNSW's native format.
+\item Setup (shared by both indexes, not attributable to either): vectors-pkl load + table listing
+  -- tier\_10k 0.12\,s, tier\_100k 0.72\,s; synopsis build (categorical-attribute classification
+  over every table, from the prebuilt metadata-store pickle) -- tier\_10k 0.16\,s, tier\_100k
+  2.32\,s. Neither is model inference -- that cost is excluded entirely, per note [a].
+\end{tablenotes}
+\end{threeparttable}
+\end{table}

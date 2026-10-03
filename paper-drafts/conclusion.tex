@@ -1,0 +1,80 @@
+% Section 11 -- drop-in replacement for "Provide the conclusion here".
+% Plain names (DUTS, Greedy-Swap, Preference-Swap, Santos-Small, ...); substitute your own
+% macros if the source defines them. Note: p.11-12 write "Santo-Small" in the prose and
+% Table 2/3 -- fix to "Santos-Small" throughout, or keep whichever you intend.
+
+\section{Conclusion and Future Work}
+
+We introduced \emph{Distribution-Aware Unionable Table Search} (DUTS): given a query table
+and a distributional requirement over one of its categorical attributes, retrieve $k$
+unionable tables whose multiset union with the query satisfies that requirement while
+maximizing unionability. Because the requirement constrains the \emph{union} rather than any
+individual table, the problem is aggregation-sensitive, and it does not decompose into
+independent per-table tests. We proved that both its decision and optimization versions are
+NP-hard by reduction from cardinality-constrained knapsack.
+
+We studied two paradigms for solving it. The \emph{unionability-first} paradigm retrieves a
+high-unionability result and then repairs it by swapping tables; we showed that computing the
+cheapest such repair is itself NP-hard by reduction from Subset Sum, and developed a greedy
+swap heuristic together with a preference-based filter that provably never discards an
+optimal repair. The \emph{distribution-first} paradigm, our two-stage solution, pushes the
+requirement into retrieval instead: Stage 1 selects a distribution-optimal pool of $\alpha k$
+candidates by solving a $0$--$1$ linear-fractional program exactly with Dinkelbach's
+parametric method, and Stage 2 selects the final $k$ tables by maximizing unionability over
+that pool as a linear $0$--$1$ integer program, since fixing the threshold $\tau$ linearizes
+the ratio constraint. Stage 2 therefore never scores more than $\alpha k$ candidates,
+independent of the size of the data lake.
+
+Our evaluation shows that the distribution-first paradigm is the stronger of the two. DUTS
+returns a distributionally feasible result for the large majority of queries (39/48, 84/92,
+and 122/142 on Santos-Small, TUS-Small, and TUS-Large) while retaining most of the
+distribution-oblivious baseline's precision and aggregate unionability; the swap heuristics
+either satisfy far fewer queries or pay a substantially larger quality cost to satisfy them.
+The two paradigms also fail for different reasons. Every DUTS failure we observed is
+attributable to retrieval returning a pool that contains no feasible set, which is what its
+formulation predicts: given a pool that does contain one, the optimization finds it. The
+heuristics, in contrast, fail on queries whose retrieved pool does contain a feasible
+solution, as the greedy order or the filtering step can discard the tables such a solution
+needs.
+
+The optimization machinery is inexpensive at scale. Dinkelbach's method converges in fewer
+than three iterations on average on every benchmark and pool size we measured, including
+candidate sets of roughly 5{,}600 tables, and Stage 1 and Stage 2 together stay in the
+single-digit milliseconds. End-to-end latency remains at roughly 400\,ms or below on a
+one-million-table lake, and is dominated not by the optimization but by the inverted-index
+probe, whose cost is output-sensitive in the length of the posting list it must materialize.
+
+\paragraph{Future work.}
+Our results point to retrieval, rather than optimization, as the component that limits both
+quality and latency, and this shapes the directions we consider most promising.
+
+\emph{Output-sensitive retrieval.} At the one-million-table tier the overlap probe accounts
+for roughly 84\% of retrieval time, because it enumerates every $(\text{table},
+\text{column})$ pair holding a distribution value even though only a small fraction survives
+intersection with the semantic candidates. Compressed posting lists, bitmap intersection, and
+early termination would let the probe pay for what survives rather than for what it reads.
+
+\emph{Constraints in candidate generation.} A more fundamental direction is to make the index
+itself yield distribution-feasible candidates, rather than filtering for them afterwards.
+Recent work embeds diversity constraints into graph traversal for approximate nearest-neighbor
+search, but that setting fixes the constraint before indexing. Ours does not: the distribution
+attribute $V_D$ and the value set $\mathcal{M}$ are query-time parameters, and which values a
+user treats as distributionally salient is not known when the index is built. Designing an
+index that supports constraints chosen at query time is an open problem.
+
+\emph{Richer requirements.} Our formulation targets a single proportion $F^\star$ for one value
+set over one attribute. Requiring a full target histogram over $Dom(V_D)$, or requirements over
+several attributes at once (as intersectional notions of representation demand), changes the
+structure of the constraint and would need different machinery in both stages.
+
+\emph{The Stage 1 objective.} Stage 1 currently maximizes the achieved proportion without a
+bound, which fills the pool with the most distributionally extreme tables. A satisficing
+variant that stops once $\tau$ is reachable and spends the remaining freedom on a secondary
+criterion, such as pool size or unionability potential, may hand Stage 2 a better pool; how to
+choose $\alpha$ adaptively is a related question.
+
+\emph{Cost-aware selection.} When tables are acquired from a data market at a price, the
+natural problem is to satisfy the distributional requirement within a budget. Adapting
+tuple-level distribution-tailoring frameworks to table-level selection, with unionability loss
+in the role of acquisition cost, would give both a new baseline and a practical variant of the
+problem.

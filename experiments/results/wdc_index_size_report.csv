@@ -1,0 +1,4 @@
+tier,n_tables,load_resources_s,hnsw_build_s,hnsw_size_mb,inverted_index_build_s,inverted_index_size_mb,n_distinct_values,n_total_postings,total_context_build_s
+tier_10k,10000,1.15,13.89,163.59,2.67,8.75,141737,329064,18.34
+tier_100k,100000,9.74,200.75,1633.02,23.41,76.57,995957,3347443,248.05
+tier_1m,999999,24.9,1284.80,16322.76,49.58,670.45,6444399,33453833,1409.24

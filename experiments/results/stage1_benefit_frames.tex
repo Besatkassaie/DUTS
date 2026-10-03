@@ -1,0 +1,40 @@
+
+\begin{frame}{Benefit of Stage 1: post-retrieval pipeline time}{top\_n$=30000$, $k{=}10$, $\alpha{=}3$ (pool $\alpha k{=}30$) -- mean ms per query, timed from just before Stage 1 to the end of the pipeline}
+\footnotesize
+\begin{center}
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{lrr rrrr rrr rr}
+\toprule
+& & & \multicolumn{4}{c}{Two-stage (scores $\alpha k{=}30$)} & \multicolumn{3}{c}{Stage 1 skipped (scores $|D|$)} & \multicolumn{2}{c}{Saving} \\
+\cmidrule(lr){4-7}\cmidrule(lr){8-10}\cmidrule(lr){11-12}
+Dataset & $n$ & $|D|$ & S1 & score & S2 & \textbf{total} & score & S2 & \textbf{total} & \% & $\times$ \\
+\midrule
+Santos-Large & 46 & 259 & 0.29 & 39.68 & 3.18 & \textbf{43.2} & 386.5 & 4.0 & \textbf{390.5} & \textbf{88.9} & 9.0 \\
+WDC-10K & 67 & 881 & 1.33 & 9.21 & 2.10 & \textbf{12.6} & 227.9 & 10.5 & \textbf{238.4} & \textbf{94.7} & 18.9 \\
+WDC-100K & 67 & 2518 & 3.49 & 7.06 & 2.84 & \textbf{13.4} & 433.0 & 36.9 & \textbf{470.0} & \textbf{97.1} & 35.1 \\
+WDC-1M & 66 & 5211 & 8.82 & 6.46 & 4.85 & \textbf{20.1} & 667.3 & 525.8 & \textbf{1193.1} & \textbf{98.3} & 59.3 \\
+\bottomrule
+\end{tabular}
+\end{center}
+\vspace{3pt}
+\footnotesize
+Same retrieved $D$ in both conditions, so they differ only in whether Stage 1 runs. \highlight{Two-stage} = Stage 1 (Dinkelbach) $\to$ score $U$ on the 30-table pool $\to$ Stage 2 over the pool. \highlight{Stage 1 skipped} = score $U$ on all of $D$ $\to$ Stage 2 over $D$ at cardinality $k$. Saving $=(T_{\text{skip}}-T_{\text{two}})/T_{\text{skip}}$.
+
+\vspace{1pt}
+{\footnotesize\color{Muted} Retrieval, the overlap intersection and the $N_i/n_i$ lookup are outside the timed window (identical in both). $F^\star/\delta$: $0.122/0.07$ on Santos-Large, $0.20/0.10$ on the WDC tiers. HNSW indexes are cached to disk, so $|D|$ is reproducible across runs. One WDC-1M query has $|D|{=}2<k$ and is excluded. Details: \texttt{stage1-benefit-report.md}.}
+\end{frame}
+
+\begin{frame}{What the Stage 1 table shows}{In plain terms}
+\footnotesize
+\begin{itemize}
+  \item \highlight{The bigger the data lake, the more Stage 1 saves}: 88.9\% on Santos-Large, 94.7\% on WDC-10K, 97.1\% on WDC-100K, 98.3\% on WDC-1M (9.0$\times$ to 59.3$\times$). Stage 1 caps unionability computations at $\alpha k = 30$ no matter how many candidates retrieval returns, so the larger $|D|$ grows, the more work it removes.
+  \item \highlight{Almost all of the saving is unionability scoring} -- 386.5\,ms $\to$ 39.7\,ms on Santos-Large, 667.3\,ms $\to$ 6.5\,ms on WDC-1M. That is 30 bipartite matchings instead of $|D|$ of them: the $\alpha k$-not-$|\mathcal{T}|$ claim, measured.
+  \item \highlight{At WDC-1M, skipping Stage 1 also makes Stage 2 expensive}: its ILP runs over $\sim$5{,}211 candidates instead of 30, costing 525.8\,ms against 4.8\,ms. Both the scoring and the solving inflate, not just the scoring.
+  \item \highlight{Stage 1 is nearly free}: 0.29--8.8\,ms, against savings of hundreds of ms.
+  \item \highlight{Feasibility is unaffected} -- 46/46, 67/67, 67/67, 64/66, identical in both conditions. The distribution-aware pre-filter never cost a feasible answer here.
+  \item \highlight{But the speedup is not free in quality}: the pool reaches 80--91\% of the $\Sigma U$ that scoring every candidate achieves. Stage 1 can exclude a high-$U$ table that Stage 2 would otherwise have chosen.
+\end{itemize}
+
+\vspace{1pt}
+{\footnotesize\color{Muted} Absolute ms vary with machine load between runs (the same cached $|D|$ gave 181.8 and 238.9\,ms for WDC-10K's skip condition); the \emph{ratio} is the stable quantity. $|D|$ is right-skewed on WDC-1M (mean 5{,}211, median $\approx$3{,}557, max 16{,}715), so the median per-query saving there is 97.7\% against a mean of 98.3\%. $top\_n{=}30000$ is the deepest retrieval setting and so the largest $|D|$; the saving narrows at smaller $top\_n$.}
+\end{frame}

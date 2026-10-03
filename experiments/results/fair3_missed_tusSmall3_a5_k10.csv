@@ -1,0 +1,9 @@
+bench,q_table,n_D,F_max_k,class
+tusSmall3,t_356fc1eaad97f93b____c18_0____0_fair.csv,109,0.06430026185627,no_solution_in_D
+tusSmall3,t_356fc1eaad97f93b____c20_1____3_fair.csv,108,0.14653422174985353,no_solution_in_D
+tusSmall3,t_356fc1eaad97f93b____c9_0____4_fair.csv,26,0.29466360480056863,no_solution_in_D
+tusSmall3,t_c701386b7c10b107____c20_0____2_fair.csv,0,,D<k
+tusSmall3,t_ca85e8f9eef5b9d5____c18_1____2_fair.csv,53,0.2698403607989119,no_solution_in_D
+tusSmall3,t_ca85e8f9eef5b9d5____c21_0____1_fair.csv,71,0.2823542222464202,no_solution_in_D
+tusSmall3,t_ca85e8f9eef5b9d5____c22_0____4_fair.csv,57,0.23910336239103364,no_solution_in_D
+tusSmall3,t_ca85e8f9eef5b9d5____c4_0____2_fair.csv,28,0.2710915073864034,no_solution_in_D

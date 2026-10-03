@@ -1,0 +1,7 @@
+[santos3/nl] 48 queries, 8 workers
+  [santos3/nl] 10/48 queries
+  [santos3/nl] 20/48 queries
+  [santos3/nl] 30/48 queries
+  [santos3/nl] 40/48 queries
+  [santos3/nl] 48/48 queries
+[santos3/nl] wrote /u6/bkassaie/DUTS/experiments/results/baselines_santos3_nl.csv (144 rows); elapsed 36s; peak child rss 0.7GB

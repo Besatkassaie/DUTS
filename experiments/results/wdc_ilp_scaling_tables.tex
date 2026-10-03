@@ -1,0 +1,121 @@
+% \usepackage{booktabs,threeparttable} required
+
+\begin{table}[t]
+\centering
+\begin{threeparttable}
+\caption{Stage 2 ILP solve time vs. requested pool size $\alpha{\times}k$ ($\alpha=10$ fixed,
+\texttt{top\_n}=5000, $\sigma=0.60$), tier\_10k.}
+\label{tab:wdc-ilp-scaling-tier10k}
+\begin{tabular}{rrrrrr}
+\toprule
+$k$ & $\alpha{\times}k$ & Queries\tnote{a} & Falls short\tnote{b} & Mean ILP time (ms)\tnote{c} & Feasible\tnote{d} \\
+\midrule
+ 10 &  100 & 30 & 0 &  2.33 & 22/30 \\
+ 20 &  200 & 30 & 0 &  1.49 & 16/30 \\
+ 30 &  300 & 30 & 0 &  1.58 & 15/30 \\
+ 40 &  400 & 30 & 1 &  2.22 & 14/30 \\
+ 50 &  500 & 30 & 1 &  1.93 & 11/30 \\
+ 60 &  600 & 30 & 2 &  1.83 & 11/30 \\
+ 70 &  700 & 30 & 2 &  6.30 & 11/30 \\
+ 80 &  800 & 30 & 3 &  3.75 & 11/30 \\
+ 90 &  900 & 30 & 4 &  4.51 & 11/30 \\
+100 & 1000 & 30 & 5 & 37.65\tnote{e} & 10/30 \\
+170\tnote{f} & 1700 & 30 & 19 & 6.64 & 9/30 \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+\footnotesize
+\item[a] Queries that survived the pre-Stage-1 filter ($|D_{union}| \geq \max(k)$ within that row's
+  sweep -- $\max(k)=100$ for the $k$=10..100 rows above, run together as one sweep; the $k$=170 row
+  is its own singleton run, so its filter uses $\max(k)=170$ instead), out of 30 selected -- 0
+  dropped at every $k$ shown here.
+\item[b] "Falls short": queries where $\alpha{\times}k \geq |D_{union}|$ for that query -- Stage 1
+  could not select a genuine $\alpha{\times}k$ pool and fell back to $P=D$ entirely (no Dinkelbach
+  run for that query at that $k$). Grows with $k$ as the requested pool grows past what retrieval
+  actually returned; Stage 2 still runs on the smaller, clamped $P$ and its time is still included
+  in column [c].
+\item[c] Mean Stage 2 (\texttt{scipy.optimize.milp}) solve time over all 30 queries at this $k$,
+  including clamped cells.
+\item[d] Number of the 30 queries where Stage 2 returned a feasible solution ($F_R \geq \tau$
+  achievable within $P$), out of 30.
+\item[e] \textbf{Single-query outlier, not a real trend.} Investigated by re-running this exact
+  cell (tier\_10k, $k$=100, same 30 queries, same $D_{union}$ per query -- retrieval and query
+  selection don't depend on $k$) three times. In every rerun, 29 of the 30 queries solved Stage 2
+  in 1--7\,ms, consistent with every other $k$ in this table. One specific query --
+  \texttt{1\_1438042987127.36\_20150728002307-00182-ip-10-236-191-2\_150862475\_5.csv}, the one
+  case in this cell with a full, unclamped $n_P=1000$ pool and \texttt{feasible=True} (the largest
+  and only fully-populated ILP instance among the 30) -- dominated the mean every time, but its OWN
+  wall-clock solve time was itself unstable across reruns: 684\,ms, 684\,ms, then 126\,ms on a
+  third rerun of the identical instance. Excluding it, the other 29 queries' mean is
+  $\sim$2.9\,ms, in line with every other $k$ row. This points to branch-and-bound search-path
+  sensitivity (system/thread-scheduling-dependent solve order in HiGHS, not a correctness issue --
+  the C4 exactness/post-solve-verification invariants that \texttt{stage2\_ilp.py} enforces are
+  about the RESULT, never wall-clock time) on this one genuinely hard, near-full-pool instance, not
+  a real "$k$=100 is slow" scaling effect. The reported 37.65\,ms mean should be read as
+  ``dominated by one unstable outlier out of 30,'' not as a representative per-query cost at this
+  pool size.
+\item[f] \textbf{Max-$k$ row.} $k$ chosen so $\alpha{\times}k$ reaches the mean $|D_{union}|$
+  actually retrieved at this tier/\texttt{top\_n}/$\sigma$ (1702, measured fresh for this row --
+  supersedes the 1643 figure in \texttt{topn\_vs\_dunion\_tables.tex}, which predates the
+  categorical-only HNSW fix and is now stale). $|D_{union}|$ is bimodal across the 30 queries here
+  (26 queries in $[333,1899]$, 4 in $[3376,4120]$), so a $k$ sized to the MEAN clamps most of the
+  smaller-yield queries (19 of 30, column [b]) while leaving the few large-yield queries a genuine,
+  non-clamped Dinkelbach selection -- there is no single $k$ at which $\alpha{\times}k$ reaches the
+  mean AND leaves every query unclamped, given this split distribution.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}
+
+\begin{table}[t]
+\centering
+\begin{threeparttable}
+\caption{Stage 2 ILP solve time vs. requested pool size $\alpha{\times}k$ ($\alpha=10$ fixed,
+\texttt{top\_n}=5000, $\sigma=0.60$), tier\_100k.}
+\label{tab:wdc-ilp-scaling-tier100k}
+\begin{tabular}{rrrrrr}
+\toprule
+$k$ & $\alpha{\times}k$ & Queries\tnote{a} & Falls short\tnote{b} & Mean ILP time (ms)\tnote{c} & Feasible\tnote{d} \\
+\midrule
+ 10 &  100 & 30 & 0 & 2.50 & 20/30 \\
+ 20 &  200 & 30 & 0 & 2.06 & 13/30 \\
+ 30 &  300 & 30 & 0 & 1.91 & 13/30 \\
+ 40 &  400 & 30 & 0 & 2.49 & 12/30 \\
+ 50 &  500 & 30 & 1 & 4.34 & 11/30 \\
+ 60 &  600 & 30 & 1 & 3.90 & 10/30 \\
+ 70 &  700 & 30 & 2 & 8.20 & 10/30 \\
+ 80 &  800 & 30 & 2 & 2.44 & 10/30 \\
+ 90 &  900 & 30 & 2 & 5.15 & 10/30 \\
+100 & 1000 & 30 & 3 & 3.34 &  9/30 \\
+639\tnote{f} & 6390 & 29\tnote{g} & 23 & 41.88 & 7/29 \\
+\bottomrule
+\end{tabular}
+\begin{tablenotes}
+\footnotesize
+\item[a] Queries that survived the pre-Stage-1 filter ($|D_{union}| \geq \max(k)$ within that row's
+  sweep -- $\max(k)=100$ for the $k$=10..100 rows above, run together as one sweep; the $k$=639 row
+  is its own singleton run, so its filter uses $\max(k)=639$ instead), out of 30 selected.
+\item[b] "Falls short": queries where $\alpha{\times}k \geq |D_{union}|$ for that query -- Stage 1
+  could not select a genuine $\alpha{\times}k$ pool and fell back to $P=D$ entirely (no Dinkelbach
+  run for that query at that $k$). Grows with $k$ as the requested pool grows past what retrieval
+  actually returned; Stage 2 still runs on the smaller, clamped $P$ and its time is still included
+  in column [c]. Fewer queries fall short here than at tier\_10k despite the identical $\alpha,k$
+  sweep, because tier\_100k's $|D_{union}|$ at \texttt{top\_n}=5000 is roughly 4x larger on average
+  (mean 6387 vs. 1702 at tier\_10k, both measured fresh for this table).
+\item[c] Mean Stage 2 (\texttt{scipy.optimize.milp}) solve time over all 30 (or 29, $k$=639 row)
+  queries at this $k$, including clamped cells.
+\item[d] Number of queries where Stage 2 returned a feasible solution ($F_R \geq \tau$ achievable
+  within $P$), out of the queries used at that $k$ (column [a]).
+\item[f] \textbf{Max-$k$ row.} $k$ chosen so $\alpha{\times}k$ reaches the mean $|D_{union}|$
+  actually retrieved at this tier/\texttt{top\_n}/$\sigma$ (6387, measured fresh for this row --
+  supersedes the 6327 figure in \texttt{topn\_vs\_dunion\_tables.tex}, which predates the
+  categorical-only HNSW fix and is now stale). $|D_{union}|$ is bimodal across the 30 queries here
+  (24 queries in $[406,2044]$, 6 in $[23277,30750]$), so a $k$ sized to the MEAN clamps essentially
+  every smaller-yield query (23 of the 29 that reach Stage 1, column [b]) while leaving the 6
+  large-yield queries a genuine, non-clamped Dinkelbach selection -- there is no single $k$ at which
+  $\alpha{\times}k$ reaches the mean AND leaves every query unclamped, given this split
+  distribution.
+\item[g] One of the 30 selected queries ($|D_{union}|=406$) falls below this row's own pre-Stage-1
+  threshold ($k$=639, see note [a]) and is dropped before Stage 1 runs -- 29 queries remain.
+\end{tablenotes}
+\end{threeparttable}
+\end{table}

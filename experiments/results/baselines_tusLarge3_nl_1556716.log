@@ -1,0 +1,17 @@
+[tusLarge3/nl] 142 queries, 8 workers
+  [tusLarge3/nl] 10/142 queries
+  [tusLarge3/nl] 20/142 queries
+  [tusLarge3/nl] 30/142 queries
+  [tusLarge3/nl] 40/142 queries
+  [tusLarge3/nl] 50/142 queries
+  [tusLarge3/nl] 60/142 queries
+  [tusLarge3/nl] 70/142 queries
+  [tusLarge3/nl] 80/142 queries
+  [tusLarge3/nl] 90/142 queries
+  [tusLarge3/nl] 100/142 queries
+  [tusLarge3/nl] 110/142 queries
+  [tusLarge3/nl] 120/142 queries
+  [tusLarge3/nl] 130/142 queries
+  [tusLarge3/nl] 140/142 queries
+  [tusLarge3/nl] 142/142 queries
+[tusLarge3/nl] wrote /u6/bkassaie/DUTS/experiments/results/baselines_tusLarge3_nl.csv (426 rows); elapsed 198s; peak child rss 4.8GB

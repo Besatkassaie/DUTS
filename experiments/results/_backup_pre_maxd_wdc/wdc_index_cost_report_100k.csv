@@ -1,0 +1,2 @@
+tier,n_tables,n_attrs_total,n_attrs_indexed_hnsw,n_attrs_indexed_postlist,setup_load_s,synopsis_build_s,hnsw_build_s,hnsw_size_bytes,postlist_build_s,postlist_size_bytes
+tier_100k,100000,518131,487728,487728,0.715,2.322,50.997,1633025424,5.82,76565066

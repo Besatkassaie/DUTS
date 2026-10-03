@@ -1,0 +1,32 @@
+✓ Metadata loaded from /u6/bkassaie/starmie_fair/data/tusLarge3/indexes/metadata_combined.pkl
+[tusLarge3] ctx ready 28s; 142 queries (0 skipped)
+  [tusLarge3 top_n=100] 10/142 queries
+  [tusLarge3 top_n=100] 20/142 queries
+  [tusLarge3 top_n=100] 30/142 queries
+  [tusLarge3 top_n=100] 40/142 queries
+  [tusLarge3 top_n=100] 50/142 queries
+  [tusLarge3 top_n=100] 60/142 queries
+  [tusLarge3 top_n=100] 70/142 queries
+  [tusLarge3 top_n=100] 80/142 queries
+  [tusLarge3 top_n=100] 90/142 queries
+  [tusLarge3 top_n=100] 100/142 queries
+  [tusLarge3 top_n=100] 110/142 queries
+  [tusLarge3 top_n=100] 120/142 queries
+  [tusLarge3 top_n=100] 130/142 queries
+  [tusLarge3 top_n=100] 140/142 queries
+[tusLarge3] wrote /u6/bkassaie/DUTS/experiments/results/fair3_eval_tusLarge3_n100.csv (852 rows), total 37s
+  [tusLarge3 top_n=1000] 10/142 queries
+  [tusLarge3 top_n=1000] 20/142 queries
+  [tusLarge3 top_n=1000] 30/142 queries
+  [tusLarge3 top_n=1000] 40/142 queries
+  [tusLarge3 top_n=1000] 50/142 queries
+  [tusLarge3 top_n=1000] 60/142 queries
+  [tusLarge3 top_n=1000] 70/142 queries
+  [tusLarge3 top_n=1000] 80/142 queries
+  [tusLarge3 top_n=1000] 90/142 queries
+  [tusLarge3 top_n=1000] 100/142 queries
+  [tusLarge3 top_n=1000] 110/142 queries
+  [tusLarge3 top_n=1000] 120/142 queries
+  [tusLarge3 top_n=1000] 130/142 queries
+  [tusLarge3 top_n=1000] 140/142 queries
+[tusLarge3] wrote /u6/bkassaie/DUTS/experiments/results/fair3_eval_tusLarge3_n1000.csv (852 rows), total 96s

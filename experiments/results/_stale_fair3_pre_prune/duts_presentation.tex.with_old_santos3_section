@@ -1,0 +1,930 @@
+\documentclass[aspectratio=169,10pt]{beamer}
+
+% ---------------------------------------------------------------- packages --
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.geometric,fit,backgrounds,calc}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{colortbl}
+
+% ------------------------------------------------------------------ theme ---
+\usetheme{default}
+\usecolortheme{default}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}[frame number]
+\beamertemplatenavigationsymbolsempty
+
+% palette (dataviz skill reference palette)
+\definecolor{Ink}{HTML}{0B0B0B}
+\definecolor{Ink2}{HTML}{52514E}
+\definecolor{Muted}{HTML}{898781}
+\definecolor{GridC}{HTML}{E1E0D9}
+\definecolor{BaseC}{HTML}{C3C2B7}
+\definecolor{SurfaceC}{HTML}{FCFCFB}
+\definecolor{Cat1}{HTML}{2A78D6} % blue
+\definecolor{Cat2}{HTML}{EB6834} % orange
+\definecolor{Cat3}{HTML}{1BAF7A} % aqua
+\definecolor{Cat4}{HTML}{EDA100} % yellow
+\definecolor{Good}{HTML}{0CA30C}
+\definecolor{WarningC}{HTML}{FAB219}
+\definecolor{CriticalC}{HTML}{D03B3B}
+\definecolor{SoftBlue}{HTML}{E8EDF6}
+\definecolor{SoftGreen}{HTML}{E3F3EC}
+\definecolor{SoftAmber}{HTML}{FDF1DA}
+\definecolor{SoftRed}{HTML}{FAE3E2}
+
+\setbeamercolor{normal text}{fg=Ink,bg=SurfaceC}
+\setbeamercolor{background canvas}{bg=SurfaceC}
+\setbeamercolor{frametitle}{fg=Ink,bg=SurfaceC}
+\setbeamercolor{title}{fg=Ink}
+\setbeamercolor{structure}{fg=Cat1}
+\setbeamercolor{alerted text}{fg=CriticalC}
+\setbeamercolor{page number in head/foot}{fg=Muted}
+\setbeamerfont{frametitle}{series=\bfseries,size=\large}
+\setbeamerfont{footline}{size=\tiny}
+
+\setbeamertemplate{frametitle}{
+  \vspace{2pt}
+  {\usebeamerfont{frametitle}\usebeamercolor[fg]{frametitle}\insertframetitle}\\[-2pt]
+  {\small\color{Ink2}\insertframesubtitle}
+  \vspace{2pt}
+  \color{GridC}\hrule height 0.6pt
+}
+
+\newcommand{\source}[1]{{\tiny\color{Muted} #1}}
+\newcommand{\highlight}[1]{{\color{Cat1}\bfseries #1}}
+\newcommand{\bad}[1]{{\color{CriticalC}\bfseries #1}}
+\newcommand{\good}[1]{{\color{Good}\bfseries #1}}
+
+\title{\textbf{Distribution-Aware Unionable Table Search}}
+\subtitle{Pipeline schematic and experimental results on santos3, santosLarge, and WDC}
+\author{DUTS experiment log}
+\date{2026-08-12}
+
+% ============================================================================
+\begin{document}
+
+% ---------------------------------------------------------------- title ----
+\begin{frame}[plain]
+  \begin{center}
+    \vspace{0.6cm}
+    {\Large\bfseries\color{Ink} Distribution-Aware Unionable Table Search}\\[6pt]
+    {\large\color{Ink2} Pipeline schematic, short-circuits, and results on\\
+     santos3 (quality), santosLarge, and WDC \texttt{tier\_10k}/\texttt{tier\_100k} (scalability)}\\[18pt]
+    {\small\color{Muted} DUTS experiment log \quad\textbullet\quad 2026-08-12}
+    \vspace{0.4cm}
+
+    \begin{tikzpicture}[scale=0.62, every node/.style={scale=0.62}]
+      \node[draw=BaseC, thick, rounded corners, fill=SoftBlue, minimum width=2.1cm, minimum height=0.9cm] (D) at (0,0) {$D$};
+      \node[draw=BaseC, thick, rounded corners, fill=SoftGreen, minimum width=2.1cm, minimum height=0.9cm] (P) at (4,0) {$P$};
+      \node[draw=BaseC, thick, rounded corners, fill=SoftAmber, minimum width=2.1cm, minimum height=0.9cm] (R) at (8,0) {$R$};
+      \draw[-{Latex[length=2.5mm]}, Ink2, thick] (D) -- node[above,font=\scriptsize] {Stage 1} (P);
+      \draw[-{Latex[length=2.5mm]}, Ink2, thick] (P) -- node[above,font=\scriptsize] {Stage 2} (R);
+    \end{tikzpicture}
+  \end{center}
+\end{frame}
+
+% -------------------------------------------------------------- agenda -----
+\begin{frame}{Agenda}
+\begin{columns}[T]
+\begin{column}{0.48\textwidth}
+\textbf{\color{Cat1}1. Pipeline schematic}
+\begin{itemize}\small
+  \item $D \to P \to R$ and the objectives at each stage
+  \item Every short-circuit: where and why
+\end{itemize}
+\vspace{6pt}
+\textbf{\color{Cat3}2. santos3 -- quality}
+\begin{itemize}\small
+  \item How santos3 was built (fairness enrichment)
+  \item Why we restrict to \emph{solvable-only}, $\alpha{=}2$, $k\in\{3,5\}$
+  \item Quality, precision/recall, per-stage timing, Dinkelbach, LP pre-check
+  \item Two-stage vs.\ skipping Stage 1
+\end{itemize}
+\end{column}
+\begin{column}{0.48\textwidth}
+\textbf{\color{Cat2}3. santosLarge -- scalability}
+\begin{itemize}\small
+  \item Why santosLarge, and choosing attributes/values to maximize $|D|$
+  \item Choosing $F^\star$/$\delta$/$\tau$ to maximize reach
+  \item The first configuration where $\alpha$ actually bites
+  \item Index cost, per-stage timing at scale
+\end{itemize}
+\vspace{6pt}
+\textbf{\color{Cat4}4. WDC -- 50.8M-table scalability}
+\begin{itemize}\small
+  \item Sampled tiers; maxD-style query selection replaces the old union-mode relaxation
+  \item Choosing the $|D|$ threshold, a much larger $(k,\alpha)$ grid, and $F^\star/\delta/\tau$
+  \item Final cohorts: 28 queries (\texttt{tier\_10k}), 30 queries (\texttt{tier\_100k}); \texttt{tier\_1m} pending
+\end{itemize}
+\vspace{6pt}
+\textbf{\color{Ink}5. Takeaways}
+\end{column}
+\end{columns}
+\end{frame}
+
+% ============================================================================
+\section{Pipeline schematic}
+% ============================================================================
+\begin{frame}{The two-stage pipeline}{$D \to P \to R$, and what each stage optimizes}
+\begin{center}
+\begin{tikzpicture}[
+  node distance=8mm and 14mm,
+  box/.style={draw=BaseC, thick, rounded corners=2pt, minimum height=1.05cm, align=center, font=\small},
+  stage/.style={box, fill=SoftBlue, minimum width=3.4cm},
+  obj/.style={font=\scriptsize, color=Ink2, align=center},
+  arr/.style={-{Latex[length=2.8mm]}, Ink2, line width=1pt}
+]
+\node[stage] (D) {$D$\\[1pt]{\scriptsize retrieved candidates}};
+\node[stage, fill=SoftGreen, right=of D] (P) {$P$\\[1pt]{\scriptsize pool, $|P|=\alpha k$}};
+\node[stage, fill=SoftAmber, right=of P] (R) {$R$\\[1pt]{\scriptsize result, $|R|=k$}};
+
+\draw[arr] (D) -- node[above=2pt]{\textbf{Stage 1}} node[below=2pt]{\scriptsize Dinkelbach} (P);
+\draw[arr] (P) -- node[above=2pt]{\textbf{Stage 2}} node[below=2pt]{\scriptsize ILP (HiGHS)} (R);
+
+\node[obj, below=3pt of D] {semantic (HNSW)\\ $\cap$ overlap (posting list)};
+\node[obj, below=3pt of P] {$\max F$\\ s.t.\ $|S|=\alpha k$};
+\node[obj, below=3pt of R] {$\max \sum U$\\ s.t.\ $|S|=k,\ F\geq\tau$};
+\end{tikzpicture}
+
+\vspace{6pt}
+\begin{tikzpicture}[scale=0.9]
+\node[font=\scriptsize, color=Ink2, align=center] {$R \subseteq P \subseteq D$ always $\quad\bullet\quad$ unionability $U$ computed only for $P$: exactly $\alpha k$ calls, never $|D|$ or $|T|$\\[2pt]
+$F\geq\tau$ is a \highlight{floor, not a target} -- no upper bound, so results \emph{above} $F^\star$ are fully valid, by design};
+\end{tikzpicture}
+\end{center}
+\end{frame}
+
+\begin{frame}{The full process -- with every short-circuit}{Where an instance can exit early, and why}
+\begin{center}
+\resizebox{!}{0.83\textheight}{%
+\begin{tikzpicture}[
+  node distance=6mm and 10mm,
+  box/.style={draw=BaseC, thick, rounded corners=2pt, minimum height=0.85cm, align=center, font=\scriptsize, text width=2.5cm},
+  dec/.style={draw=BaseC, thick, diamond, aspect=2.2, align=center, font=\scriptsize, inner sep=1pt, text width=2.05cm},
+  outcome/.style={draw=none, rounded corners=2pt, minimum height=0.75cm, align=center, font=\scriptsize\bfseries, text width=2.7cm},
+  arr/.style={-{Latex[length=2.2mm]}, Ink2, line width=0.7pt},
+  yesno/.style={font=\tiny, color=Ink2}
+]
+% retrieval
+\node[box, fill=SoftBlue] (retr) {Retrieve $D$\\{\scriptsize HNSW $\cap$ posting list}};
+\node[dec, below=of retr] (chk1) {$|D|<k$?};
+\node[outcome, fill=SoftAmber, right=16mm of chk1] (sc1) {\bad{SHORT CIRCUIT}\\insufficient\_candidates\\$R=\varnothing$};
+
+\node[dec, below=14mm of chk1] (chk2) {$\alpha k \geq |D|$?};
+\node[box, fill=Muted!25, left=16mm of chk2] (clamp) {\textbf{C5 CLAMP}\\skip Stage 1\\$P := D$};
+\node[box, fill=SoftGreen, right=16mm of chk2] (s1) {\textbf{Stage 1}\\Dinkelbach\\$\max F,\ |S|=\alpha k$};
+
+\node[box, fill=SoftGreen, below=16mm of chk2] (pool) {Pool $P$};
+\node[box, fill=Cat3!25, below=of pool] (score) {Score $U$ for $P$ only\\{\scriptsize $\alpha k$ unionability calls}};
+
+\node[dec, below=13mm of score] (chk3) {LP pre-check\\infeasible?};
+\node[outcome, fill=SoftRed, right=16mm of chk3] (sc2) {\bad{SHORT CIRCUIT}\\LP decisive\\skip branch\&bound};
+\node[box, fill=SoftBlue, below=13mm of chk3] (ilp) {\textbf{Stage 2}\\ILP branch\&bound\\$\max \sum U,\ F\geq\tau$};
+
+\node[dec, below=12mm of ilp] (chk4) {feasible?};
+\node[outcome, fill=SoftRed, left=16mm of chk4] (sc3) {\bad{stage2\_infeasible}\\$R=\varnothing$};
+\node[outcome, fill=SoftGreen, below=10mm of chk4] (done) {\good{$R$}\\feasible result};
+
+% arrows
+\draw[arr] (retr) -- (chk1);
+\draw[arr] (chk1) -- node[yesno,above]{yes} (sc1);
+\draw[arr] (chk1) -- node[yesno,left]{no} (chk2);
+\draw[arr] (chk2) -- node[yesno,above]{yes} (clamp);
+\draw[arr] (chk2) -- node[yesno,above]{no} (s1);
+\draw[arr] (clamp) |- (pool);
+\draw[arr] (s1) |- (pool);
+\draw[arr] (chk2) -- (pool);
+\draw[arr] (pool) -- (score);
+\draw[arr] (score) -- (chk3);
+\draw[arr] (chk3) -- node[yesno,above]{yes} (sc2);
+\draw[arr] (chk3) -- node[yesno,left]{no / off} (ilp);
+\draw[arr] (sc2) |- ($(sc3.north)+(0,10mm)$) -- (sc3);
+\draw[arr] (ilp) -- (chk4);
+\draw[arr] (chk4) -- node[yesno,above]{no} (sc3);
+\draw[arr] (chk4) -- node[yesno,right]{yes} (done);
+\end{tikzpicture}}
+\end{center}
+\end{frame}
+
+\begin{frame}{Short-circuits -- what each one means}
+\small
+\begin{tabular}{@{}p{3.1cm}p{5.1cm}p{3.6cm}@{}}
+\toprule
+\textbf{Short-circuit} & \textbf{Condition} & \textbf{Cost avoided} \\
+\midrule
+\cellcolor{SoftAmber!60}\texttt{insufficient\_\allowbreak candidates} & $|D|<k$ before Stage 1 even starts & Stage 1, scoring, Stage 2 -- all of it \\[4pt]
+\cellcolor{Muted!25}C5 clamp & $\alpha k \geq |D|$, so $P{:=}D$ & Dinkelbach never runs (\emph{not} run-and-discarded) \\[4pt]
+\cellcolor{SoftRed!70}LP pre-check decisive & LP relaxation already infeasible & ILP branch-and-bound \\[4pt]
+\cellcolor{SoftRed!70}\texttt{stage2\_\allowbreak infeasible} & ILP proves no $k$-subset of $P$ reaches $\tau$ & -- (this is the answer) \\
+\bottomrule
+\end{tabular}
+\vspace{8pt}
+
+{\footnotesize\color{Ink2} The C4 feasibility certificate (a would-be short-circuit \emph{before} Stage 1, splitting \texttt{insufficient\_candidates} from an "intrinsically infeasible" cause) was removed from this pipeline entirely -- \texttt{stage2\_infeasible} is now the only post-retrieval failure label.}
+\end{frame}
+
+% ============================================================================
+\section{santos3 -- quality}
+% ============================================================================
+\begin{frame}{How santos3 was built}{A fairness-enriched variant of the base santos benchmark}
+\small
+\begin{itemize}
+  \item Starting point: base \textbf{santos} (550 datalake tables, 50 query tables).
+  \item Enrichment adds tuples to \highlight{both sides} -- query tables \emph{and} datalake tables -- not datalake only.
+  \item Every enriched datalake table has a paired original: \highlight{381} \texttt{\_fair} tables, one per base table selected for enrichment (the other 169 base tables are left as is).
+  \item \highlight{All 48} usable query tables are fair-rebalanced -- 100\% of the query side is enriched, none of it is the untouched original.
+\end{itemize}
+\vspace{6pt}
+\textbf{Choosing what to enrich, per table}
+\begin{itemize}\small
+  \item Pick a categorical column at random, subject to a domain-size threshold of \highlight{50} distinct values -- the same $\theta_{\mathrm{cat}}=50$ threshold the pipeline itself uses to call a column categorical.
+  \item Pick one value from that column's domain as the distributional value $M$.
+  \item Add tuples until $M$'s proportion moves toward the target fraction $F^\star$.
+\end{itemize}
+\vspace{4pt}
+{\footnotesize\color{Muted} This is why query tables systematically sit \emph{above} $F^\star$ in the quality slides that follow (median $F_Q\approx 0.43$) -- the enrichment target and the search target are the same fraction, applied from two different directions.}
+\end{frame}
+
+\begin{frame}{santos3: why \emph{solvable-only}, $\alpha=2$, $k\in\{3,5\}$}
+\begin{columns}[T]
+\begin{column}{0.55\textwidth}
+\textbf{Why restrict the query set at all}
+\begin{itemize}\small
+  \item Most santos3 failures are \texttt{insufficient\_\allowbreak candidates} -- retrieval alone didn't reach $k$
+  \item Those rows have \emph{no} Stage 1, \emph{no} Stage 2, \emph{no} timings -- they dilute every mean without saying anything about the optimizer
+  \item So: keep only queries where brute-force enumeration of every $k$-subset of $D$ proves $\tau$ is \emph{reachable}
+\end{itemize}
+\vspace{4pt}
+\textbf{Why $\alpha=2$, $k\in\{3,5\}$}
+\begin{itemize}\small
+  \item These are santos3's native operating point ($\mathrm{top\_n}{=}100$): mean $|D|\approx 15$
+  \item Large enough $k$ to be a real result size, small enough that a majority of queries still clear $|D|\geq k$
+\end{itemize}
+\end{column}
+\begin{column}{0.45\textwidth}
+\centering
+\includegraphics[width=\linewidth]{figures/s3_cohort_funnel.pdf}
+\end{column}
+\end{columns}
+\vspace{2pt}
+{\footnotesize\color{Muted} Result: \highlight{43 of 48} retained at $k{=}3$, \highlight{43 of 48} at $k{=}5$ -- this is the cohort every santos3 slide after this one uses.}
+\end{frame}
+
+\begin{frame}{santos3: on every solvable instance, the pipeline solves it}
+\centering
+\includegraphics[width=0.62\linewidth]{figures/s3_quality.pdf}
+
+\vspace{2pt}
+\small\color{Ink2}
+\textbf{86 of 86 solvable instances feasible.} Every result \emph{overshoots} $F^\star$ ($F_R\approx 0.46$--$0.47$ vs.\ $0.30$) -- but that is \highlight{allowed}: Stage 2's constraint is $F_R\geq\tau$, no upper bound, and Stage 1's unbounded $\arg\max F$ is the intended objective (C3), not a proximity target. Each bar has its \highlight{own} shaded band, scoped to what that stage actually selects from: $F_P$'s band is the range over $\alpha k$-subsets of $D$ (or all of $D$ when C5-clamped); $F_R$'s band is the range over $k$-subsets of \emph{$P$}, not $D$ -- Stage 2 never sees anything outside $P$.
+
+\vspace{2pt}
+{\footnotesize\color{Muted} Cohort: \highlight{$n=86$} solvable-only rows (43 at $k{=}3$, 43 at $k{=}5$), 100\% feasible -- same population throughout the santos3 section unless a caption says otherwise.}
+\end{frame}
+
+\begin{frame}{santos3: precision, recall, and the ideal-recall ceiling}
+\centering
+\includegraphics[width=0.92\linewidth]{figures/s3_precision_recall.pdf}
+
+\vspace{2pt}
+\small\color{Ink2}
+\highlight{Precision is $\approx$1.00 everywhere and exactly 1.00 at $R$, both $k$} ($D$: 0.993, $P$: 1.00/0.997, $R$: 1.00/1.00). The $\Diamond$ marker is \emph{ideal recall}
+(starmie\_fair's ceiling, $\mathrm{mean}\ \min(k,\mathrm{gt\_size})/\mathrm{gt\_size}$) -- \highlight{recall at $R$ still lands exactly on it, both $k$}: with precision at $R$ exactly 1.00 and $|R|{=}k$ always $\leq$ every query's groundtruth size (min 12), recall cannot do better by construction.
+
+\vspace{2pt}
+{\footnotesize\color{Muted} Cohort: \highlight{$n=43$} at $k{=}3$, \highlight{$n=43$} at $k{=}5$ -- same solvable-only, retained population as every other santos3 slide.}
+\end{frame}
+
+\begin{frame}{santos3: where the time goes}
+\centering
+\includegraphics[width=0.72\linewidth]{figures/s3_stage_timing.pdf}
+
+\vspace{2pt}
+\small\color{Ink2}
+Retrieval and unionability \highlight{scoring} dominate; \textbf{Stage 1 is imperceptible} (0.03\,ms) -- the C5 clamp still fires on a substantial minority of rows at this pool size (\highlight{18 of 86}), so Dinkelbach doesn't always run.
+
+\vspace{2pt}
+{\footnotesize\color{Muted} Cohort: \highlight{$n=86$} feasible rows (43 at $k{=}3$, 43 at $k{=}5$).}
+\end{frame}
+
+\begin{frame}{santos3: Stage 1 convergence \& the LP pre-check}
+\centering
+\includegraphics[width=0.92\linewidth]{figures/s3_dinkelbach_lp.pdf}
+
+\vspace{2pt}
+\small\color{Ink2}
+Dinkelbach converges in \highlight{1--2 iterations, always}. The LP feasibility pre-check ran on every instance and was \bad{decisive zero times} -- on a solvable-only cohort there is nothing for it to catch.
+
+\vspace{2pt}
+{\footnotesize\color{Muted} Cohort: \highlight{left panel, $n=68$} Dinkelbach invocations out of 86 (the other 18 are C5-clamped, so Dinkelbach never runs); \highlight{right panel, $n=86$} for the LP pre-check, which runs unconditionally.}
+\end{frame}
+
+\begin{frame}{santos3: two-stage vs.\ skipping Stage 1}
+\centering
+\includegraphics[width=0.92\linewidth]{figures/s3_skip_stage1.pdf}
+
+\vspace{2pt}
+\small\color{Ink2}
+Stage 1 now earns a real \highlight{speed} advantage (1.3--1.4$\times$ faster) at a small \bad{$\Sigma U$} cost (skip\_stage1 reaches 2--5\% higher $\Sigma U$, since it optimizes over the superset $D\supseteq P$): the same pattern santosLarge shows at a larger scale, here because $\alpha k$ is no longer close to $|D|$ (mean $|D|{\approx}15$ vs.\ $\alpha k\in\{6,10\}$). (Contrast with santosLarge next.)
+
+\vspace{2pt}
+{\footnotesize\color{Muted} Cohort: \highlight{$n=86$} (43 at $k{=}3$, 43 at $k{=}5$), all feasible in both arms.}
+\end{frame}
+
+% ============================================================================
+\section{santosLarge -- scalability}
+% ============================================================================
+\begin{frame}{Why santosLarge, and why $|D|\geq 50$}
+\begin{columns}[T]
+\begin{column}{0.5\textwidth}
+\textbf{The problem on santos3}
+\begin{itemize}\small
+  \item Mean $|D|\approx 15$ at $\mathrm{top\_n}{=}100$ -- the C5 clamp still fires on a real minority (18 of 86 rows), and $\alpha$ is fixed at 2 by design
+  \item With only two $(k,\alpha)$ cells ($\alpha k \in \{6,10\}$), there's no \emph{sweep} to show $\alpha k$-scaling against -- just two points
+  \item Max observed $|D|\approx 30$ -- nowhere near large enough to separate scoring cost from $|D|$ itself
+\end{itemize}
+\vspace{4pt}
+\textbf{santosLarge (11{,}086 datalake tables, $\mathrm{top\_n}{=}5000$), with the \emph{original} random attribute/value assignment}
+\begin{itemize}\small
+  \item Median $|D|$ is \emph{still} only 11 -- most queries' protected value occurs in very few tables
+  \item The tail is long but thin: only \highlight{19 of 78} queries reach $|D|\geq 50$
+  \item Restricting to that 19-query tail was the only way to see $\alpha$ bite at all -- until now (next slide)
+\end{itemize}
+\end{column}
+\begin{column}{0.5\textwidth}
+\centering
+\includegraphics[width=\linewidth]{figures/sl_maxd_before_after.pdf}
+\end{column}
+\end{columns}
+\vspace{4pt}
+{\footnotesize\color{Muted} Instead of restricting to a thin 19-query tail, we re-picked \emph{which} attribute/value each query targets -- deliberately, not randomly -- so far more of the 78 queries carry a usable $|D|$. Methodology and the resulting cohort are the next two slides; every santosLarge slide after them uses that new cohort.}
+\end{frame}
+
+\begin{frame}{santosLarge: choosing attributes/values to maximize $|D|$}{Why random assignment fails, and what replaces it}
+\textbf{Why the original (random) assignment gives small $|D|$}
+\begin{itemize}\small
+  \item Each query's protected attribute/value came from \texttt{starmie\_fair}'s \texttt{experimental\_setup.py} (\texttt{selection\_strategy='random'}, seed 42): pick a random categorical column, then \texttt{random.choice(unique\_values)} -- with no regard for how common that value is \emph{elsewhere} in the 11{,}086-table datalake.
+  \item $|D|$ is driven entirely by cross-table value popularity (via the overlap posting-list) intersected with semantic column similarity -- a purely random value usually lands on something rare.
+\end{itemize}
+\vspace{4pt}
+\textbf{The replacement: rank by a free proxy, verify by real retrieval}
+\begin{itemize}\small
+  \item Per query table: enumerate every (categorical attr, value) pair from its own synopsis (excluding the empty-cell bucket).
+  \item Rank all candidates by \highlight{$|$postings$[$value$]|$} -- the overlap index's own posting-list size -- a free, no-retrieval proxy for "how many $(table,attr)$ pairs would pass the overlap filter."
+  \item Verify the top 20 candidates by \emph{actual} retrieval ($\mathrm{top\_n}{=}5000$, same context every santosLarge script uses); keep whichever gives the single largest real $|D|$ -- \highlight{maximize, no target, no early exit}.
+\end{itemize}
+\vspace{4pt}
+{\footnotesize\color{Muted} This is a deliberate, documented departure from the original random selection, not a bug fix -- see next: it systematically favors common/generic values over rare ones, which is exactly what makes $|D|$ large.}
+\end{frame}
+
+\begin{frame}{santosLarge: what changed, concretely}{Old (random) vs.\ new (maxD) assignment, three examples}
+\small
+\begin{tabular}{@{}p{0.30\textwidth}p{0.33\textwidth}p{0.33\textwidth}@{}}
+\textbf{Table} & \textbf{Old: attr $\to$ value ($|D|$)} & \textbf{New: attr $\to$ value ($|D|$)} \\[2pt]
+\texttt{cabinet-office...} & \texttt{Organisation} $\to$ \texttt{Cabinet Office} (17) & \texttt{Valid?} $\to$ \texttt{1} (213) \\[4pt]
+\texttt{1004ipopayments.csv} & \texttt{Date} $\to$ \texttt{20/04/2010} (2) & \texttt{Expense type} $\to$ \texttt{Other} (134) \\[4pt]
+\texttt{Dec\_19.csv} & (unnamed) $\to$ \texttt{09/12/2019} (6) & (unnamed) $\to$ \texttt{Entity} (171) \\
+\end{tabular}
+\vspace{8pt}
+
+\highlight{The pattern is consistent}: new values skew heavily toward generic/structural tokens (\texttt{0}, \texttt{1.0}, \texttt{Headcount}, \texttt{Entity}, \texttt{Other}) rather than the specific, often-unique values random selection picked (a particular date, org name, or country). That is the mechanism behind the $|D|$ gain -- these are values that recur across many tables in this GOV.UK-style organizational-report corpus, not meaningfully rare "protected" attributes anymore.
+
+\vspace{4pt}
+{\footnotesize\color{Muted} A handful of tables ($\sim$4 of 78) improve little or not at all even after checking up to $\sim$200 candidates each (e.g.\ \texttt{biodiversity\_by\_county.csv}, $|D|{=}1\to1$) -- a genuine intrinsic limit (no other table is both semantically similar and value-overlapping), not a search-budget problem.}
+\end{frame}
+
+\begin{frame}{santosLarge: picking the $|D|$ threshold and $(k,\alpha)$ grid}{Data-driven, not carried over from the old grid}
+\centering
+\includegraphics[width=0.78\linewidth]{figures/sl_maxd_threshold_curve.pdf}
+
+\vspace{4pt}
+\small\color{Ink2}
+Old (random) $|D|$: median 11, max 365. New (maxD): median 77, mean 108, max 408. With the old grid ($k\in\{10,20\},\alpha\in\{2,3\}$, max pool $60$) carried over unexamined, the pool size would say nothing about the new distribution -- so the grid is re-derived from it instead: \highlight{$k\in\{10,15\},\ \alpha\in\{2,3,4\}$} (pool sizes 20--60) and cohort \highlight{$|D|\geq 60$}, chosen so every retained query stays \emph{unclamped across all six cells} -- one consistent, comparable population for the whole sweep, same design principle as the original cohort, recalibrated to the new distribution.
+
+\vspace{2pt}
+{\footnotesize\color{Muted} Result: \highlight{47 of 78} queries retained (vs.\ 19 of 78 before) -- the cohort every santosLarge slide after this one uses.}
+\end{frame}
+
+\begin{frame}{santosLarge: choosing $F^\star$, $\delta$, and $\tau$}{Reach-maximizing, not carried over from santos3}
+\centering
+\includegraphics[width=0.66\linewidth]{figures/sl_tau_sweep_curve.pdf}
+
+\vspace{2pt}
+\footnotesize\color{Ink2}
+Only $\tau=F^\star-\delta$ enters anything mechanically ($U$ -- hence $\delta$/$F^\star$ individually -- never appears in Stage 2's constraints, only its objective), so ``maximize reach'' with no floor trivially wants $\tau\to0$. We fixed $\delta$, swept $F^\star$ from the $\tau\geq0.05$ floor, and re-solved Stage 2 only across all $47\times6{=}282$ cells (candidates scored $U{=}1.0$ -- feasibility doesn't depend on $U$). \highlight{Reach is uniform across $\alpha$ at fixed $k$} -- $\alpha$ creates no bottleneck here.
+
+\vspace{2pt}
+santosLarge is the \emph{scalability} benchmark, not a like-for-like with santos3, so we did \highlight{not} keep $F^\star{=}0.30$. $\delta{=}0.70$ (tried first) made the tolerance band nearly meaningless; tightened to \highlight{$\delta{=}0.07$} (below santos3's $0.15$). For $\tau$: rather than sit at the floor, found the largest $\tau$ keeping every query feasible in every config -- breaks at $\tau{=}0.0533$ -- so used \highlight{$\tau{=}0.052,\ F^\star{=}0.122$}.
+
+\vspace{2pt}
+{\footnotesize\color{Muted} Sweep cohort: the same $n=47$, $|D|\geq60$ population as the previous slide. See \texttt{experiments/santoslarge\_tau\_sweep.py}.}
+\end{frame}
+
+\begin{frame}{santosLarge: one outlier, and why we exclude rather than relax}{Getting to 100\% honestly}
+\small
+\begin{itemize}
+  \item At $\tau{=}0.05$: \highlight{46 of 47} queries reach feasibility in \emph{every} one of the 6 $(k,\alpha)$ cells -- 98\% overall (276/282), matching the previous slide.
+  \item The entire gap is \highlight{one single query}: \texttt{SpendoverC2A3500Apr17.csv}, infeasible in all 6 of its configs at $\tau{=}0.05$ -- but feasible again at $\tau\leq0.03$. Its achievable $F$ (even after Stage 1's $\arg\max F$) sits just under the floor.
+  \item \textbf{Two ways to reach 100\%}: lower the floor to $\tau{=}0.03$ for everyone (undoes the floor we deliberately set, to rescue one outlier), or \highlight{exclude that one query} and keep $\tau{=}0.05$.
+\end{itemize}
+\vspace{4pt}
+\textbf{We exclude it (Option 3).} Lowering the floor to fix one outlier would mean the floor was never really a floor -- and it's a narrower, more honest exclusion than relaxing a constraint for the whole cohort. The remaining \highlight{$n=46$} queries reach exactly \highlight{100\%} feasibility (276/276) at $\tau{=}0.052,\ F^\star{=}0.122,\ \delta{=}0.07$ already chosen -- not a relaxed target, the one already agreed on.
+
+\vspace{2pt}
+{\footnotesize\color{Muted} Final cohort for every santosLarge slide from here on: $n{=}46$ ($|D|\geq60$, minus \texttt{SpendoverC2A3500Apr17.csv}) $\times\,6$ configs ($k\in\{10,15\},\alpha\in\{2,3,4\}$) $=276$ rows. See \texttt{experiments/santoslarge\_maxd\_study.py}.}
+\end{frame}
+
+\begin{frame}{santosLarge: one-off index cost}
+\centering
+\includegraphics[width=0.95\linewidth]{figures/sl_index_build.pdf}
+
+\vspace{6pt}
+\small\color{Ink2}
+The HNSW (semantic) index now dominates build cost (225--272s across two rebuilds), ahead of the posting-list (overlap) index at a stable 109--110s -- both read every one of 11{,}086 tables. \highlight{HNSW build time varies $\sim$21\% run-to-run} (the posting-list build does not): \texttt{hnswlib}'s multi-threaded \texttt{add\_items} makes graph construction order, and hence wall-clock cost, non-deterministic even with a fixed seed. On disk, the HNSW index (\highlight{281.8 MB}, 84{,}157 elements $\times$ 768 dims) is $\sim$17$\times$ larger than the posting-list index (\highlight{16.9 MB}, 277{,}704 distinct values). Amortized over all queries; not part of any per-query timing on the following slides.
+
+\vspace{2pt}
+{\footnotesize\color{Muted} One-off, over all 78 santosLarge queries -- built once, independent of the $n{=}46$ cohort used below.}
+\end{frame}
+
+\begin{frame}{santosLarge: $\alpha$ finally bites}
+\centering
+\includegraphics[width=0.7\linewidth]{figures/sl_pool_scaling.pdf}
+
+\vspace{4pt}
+\small\color{Ink2}
+Realized pool size $|P|$ tracks the requested $\alpha k$ \highlight{exactly} (20 / 30 / 40 / 30 / 45 / 60) -- the C5 clamp fires on \highlight{0 of 276} rows here: the $|D|\geq60$ cohort was chosen specifically so no cell clamps, a cleaner separation than santos3's 18 of 86 (santos3's $|D|$ is much smaller and $\alpha$ is fixed, not swept).
+
+\vspace{2pt}
+{\footnotesize\color{Muted} Cohort: \highlight{$n=46$} per config, all feasible -- $P$ is built before Stage 2 runs, so this holds regardless of outcome (here, every row reaches $\tau$ anyway -- see the outcome slide two ahead).}
+\end{frame}
+
+\begin{frame}{santosLarge: per-stage time scales with $\alpha k$, not $|D|$}
+\centering
+\includegraphics[width=0.8\linewidth]{figures/sl_stage_timing_scaling.pdf}
+
+\vspace{2pt}
+\small\color{Ink2}
+\textbf{This is the efficiency claim, made visible.} Retrieval is flat (fixed cost of probing the index); \highlight{scoring grows with $\alpha k$} (roughly 20\,ms at $\alpha k{=}20$ up to over 100\,ms at $\alpha k{=}60$); Stage 1 stays under a tenth of a millisecond throughout, Stage 2 a few milliseconds.
+
+{\footnotesize\color{Muted} Cohort: \highlight{$n=46$} per config, all feasible -- every query is timed the same way regardless of the (now uniformly positive) outcome.}
+\end{frame}
+
+\begin{frame}{santosLarge: outcome and Stage 1 convergence}
+\centering
+\includegraphics[width=0.92\linewidth]{figures/sl_outcome_dinkelbach.pdf}
+
+\vspace{2pt}
+\small\color{Ink2}
+\highlight{All 46 of 46} queries reach $\tau$ in \emph{every} $(k,\alpha)$ cell -- by construction of the cohort (Option 3: the one query that didn't was excluded, not papered over with a lower floor). Dinkelbach runs on every row (never clamped) and converges in \highlight{1--5 iterations} (mean 2.3), a wider range than santos3's $\leq\!2$ since these pools are larger and less uniform.
+
+\vspace{2pt}
+{\footnotesize\color{Muted} Cohort: \highlight{left panel, $n=46$} (one config shown -- 46 reach $\tau$, 0 don't, identically across all 6 configs); \highlight{right panel, $n=276$} Dinkelbach invocations out of 276 rows (46 queries $\times$ 6 configs) -- none are C5-clamped.}
+\end{frame}
+
+\begin{frame}{santosLarge: convergence time and iterations by pool size}{Mean per query, $n=46$ at each pool size}
+\small
+\begin{center}
+\begin{tabular}{cccccc}
+\toprule
+$k$ & $\alpha$ & pool ($\alpha k$) & Stage 1 time & mean iters & range \\
+\midrule
+10 & 2 & 20 & 0.317\,ms & 2.11 & 1--5 \\
+10 & 3 & 30 & 0.370\,ms & 2.26 & 1--5 \\
+10 & 4 & 40 & 0.391\,ms & 2.43 & 1--5 \\
+15 & 2 & 30 & 0.368\,ms & 2.26 & 1--5 \\
+15 & 3 & 45 & 0.383\,ms & 2.30 & 1--5 \\
+15 & 4 & 60 & 0.388\,ms & 2.20 & 1--5 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{4pt}
+\small\color{Ink2}
+\highlight{Convergence time tracks pool size only weakly} -- 0.317\,ms at pool 20 to 0.391\,ms at pool 40, a $\sim$23\% rise for a $2\times$ larger pool -- since each iteration is one sort-and-select over the pool, not a re-scan proportional to some larger structure. \highlight{Iteration count doesn't increase monotonically with pool size at all} (pool 45's mean 2.30 exceeds pool 60's 2.20): convergence speed is a property of how skewed the pool's $N_i/n_i$ ratios are, not of how large the pool is.
+
+\vspace{2pt}
+{\footnotesize\color{Muted} Cohort: $n=46$ per row, all Dinkelbach invocations (none clamped). See \texttt{experiments/RESULTS-santoslarge.md} \S4 for the full breakdown.}
+\end{frame}
+
+\begin{frame}{santosLarge: convergence vs.\ \emph{input} pool size $|D|$}{Setting: $k{=}10,\alpha{=}3$ fixed (output pool $\alpha k{=}30$); \texttt{top\_n} swept from 5{,}000}
+\footnotesize
+\begin{center}
+\begin{tabular}{ccccc}
+\toprule
+requested \texttt{top\_n} & actual mean $|D|$ & clamped & Stage 1 time & mean iters \\
+\midrule
+5{,}000 & 160.4 & 0/46 & 0.196\,ms & 2.26 \\
+10{,}000 & 208.6 & 0/46 & 0.249\,ms & 2.22 \\
+15{,}000 & 236.0 & 0/46 & 0.281\,ms & 2.26 \\
+20{,}000 & 250.6 & 0/46 & 0.293\,ms & 2.28 \\
+25{,}000 & 257.9 & 0/46 & 0.302\,ms & 2.28 \\
+30{,}000 & 259.0 & 0/46 & 0.301\,ms & 2.28 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{4pt}
+\small\color{Ink2}
+The previous slide varies the pool Stage 1 \emph{selects} ($\alpha k$) at fixed \texttt{top\_n}; this one fixes $k,\alpha$ and varies the pool Stage 1 \emph{searches over} ($|D|$) by sweeping \texttt{top\_n} -- \texttt{top\_n} is the dial, \highlight{realized $|D|$} is what's reported (yield $\ne$ \texttt{top\_n} after the overlap filter). Swept from $5{,}000$ since smaller \texttt{top\_n} clamps ($\alpha k{=}30\ge|D|$, $18/46$ at \texttt{top\_n}$=500$ in an earlier pass), so every point here is clamp-free. \highlight{Time scales with $|D|$} -- $\sim\!1.5\times$ from $|D|{\approx}160$ to $259$ -- one $O(|D|\log|D|)$ sort per iteration. \highlight{$|D|$ plateaus} past \texttt{top\_n}$\approx\!20{,}000$ ($+3\%$ over a $50\%$ larger \texttt{top\_n}) as the finite overlap-matching pool is exhausted, and time flattens in step. \highlight{Iteration count stays flat} (2.22--2.28): convergence takes only a few iterations regardless of search-pool size -- the $|D|$-dependence is in per-iteration sort cost, not iteration count.
+
+\vspace{2pt}
+{\footnotesize\color{Muted} Same 46-query cohort, re-retrieved per \texttt{top\_n}. Script: \texttt{experiments/santoslarge\_topn\_pool\_sweep.py}. See \texttt{experiments/RESULTS-santoslarge.md} \S4b.}
+\end{frame}
+
+\begin{frame}{The LP pre-check: still never decisive here}
+\centering
+\includegraphics[width=0.75\linewidth]{figures/lp_decisiveness_comparison.pdf}
+
+\vspace{4pt}
+\small\color{Ink2}
+On santos3 (solvable-only) the pre-check never fires. On the redesigned santosLarge cohort it \highlight{still never fires} either -- unlike the original random-assignment cohort (where 37\% of instances were genuinely infeasible), the maxD selection plus the reach-maximizing $\tau$ choice (Option 3) means every retained instance is solvable by construction, leaving nothing for the LP to catch.
+
+\vspace{2pt}
+{\footnotesize\color{Muted} Cohort: santos3's solvable-only 43+43 rows; santosLarge's $46\times6$-config rows, pooled across $(k,\alpha)$ rather than shown per-config.}
+\end{frame}
+
+\begin{frame}{santosLarge: precheck + actual solver only}{Excludes constraint-setup/verification overhead}
+\footnotesize
+\begin{center}
+\begin{tabular}{ccccccc}
+\toprule
+$\alpha$ & $k$ & pool & LP precheck & MILP solver & precheck+solver & full Stage 2 \\
+\midrule
+2 & 10 & 20 & 0.677\,ms & 1.164\,ms & \textbf{1.842\,ms} & 2.055\,ms \\
+2 & 15 & 30 & 0.677\,ms & 1.276\,ms & \textbf{1.953\,ms} & 2.160\,ms \\
+3 & 10 & 30 & 0.654\,ms & 1.092\,ms & \textbf{1.745\,ms} & 1.946\,ms \\
+3 & 15 & 45 & 0.757\,ms & 1.356\,ms & \textbf{2.112\,ms} & 2.337\,ms \\
+4 & 10 & 40 & 0.679\,ms & 1.338\,ms & \textbf{2.017\,ms} & 2.224\,ms \\
+4 & 15 & 60 & 0.783\,ms & 1.507\,ms & \textbf{2.291\,ms} & 2.518\,ms \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{4pt}
+\small\color{Ink2}
+"Full Stage 2" (§5) is precheck + \highlight{actual MILP solve} + constraint-setup/post-solve-verification overhead ($\sim$0.2--0.25\,ms, small and roughly constant). Isolating just the two solves: the \highlight{MILP solver dominates} ($\sim$60--65\% of precheck+solver time), the LP precheck the remaining $\sim$35--40\%, both growing mildly with pool size.
+
+\vspace{2pt}
+{\footnotesize\color{Muted} Caveat: absolute ms here differ from \S5's LP-time column for identical $(k,\alpha)$ cells -- sub-millisecond \texttt{perf\_counter} timings are noisy across process runs ($\pm$30\% or so); the relative split (solver $>$ precheck) is the stable finding. See \texttt{RESULTS-santoslarge.md} \S5c.}
+\end{frame}
+
+\begin{frame}{santosLarge: two-stage vs.\ skipping Stage 1}
+\centering
+\includegraphics[width=0.86\linewidth]{figures/sl_skip_stage1.pdf}
+
+\vspace{2pt}
+\small\color{Ink2}
+Stage 1 earns its place on \highlight{speed} (1.7--2.8$\times$ faster, growing with $\alpha k$) but costs \bad{$\Sigma U$}: skip\_stage1 optimizes over the superset $D\supseteq P$, so it can only match or beat two-stage there (roughly 5--9\% higher $\Sigma U$ here). Both satisfy $F_R\geq\tau$; $F_R$'s distance from $F^\star{=}0.122$ is a diagnostic, not a constraint either violates -- achieved $F_R$ sits around 0.49--0.57 on average (individual rows range 0.052--1.0), comfortably above $\tau{=}0.052$ and, on average, above $F^\star$ too, since neither stage targets $F^\star$ directly (C3) -- Stage 1's unbounded $\arg\max F$ pushes past it.
+
+\vspace{2pt}
+{\footnotesize\color{Muted} Cohort: \highlight{$n=46$} per config, all feasible in both arms (both left and right panels) -- unlike the original cohort, there's no feasible-only restriction needed here.}
+\end{frame}
+
+% ============================================================================
+\section{WDC -- scalability at 50.8M-table scale}
+% ============================================================================
+\begin{frame}{WDC: a genuinely large, uncurated corpus}{50.8M web tables from Common Crawl -- \texttt{tier\_10k} and \texttt{tier\_100k}, \texttt{tier\_1m} pending}
+\small
+Unlike santos/santosLarge, WDC ships \highlight{no query/datalake split and no curated query list} -- query tables are drawn algorithmically, and (unlike santos-family benchmarks) \highlight{the set of query tables is not fixed}: any table that doesn't work out can simply be replaced.
+
+\vspace{6pt}
+\textbf{Critical constraint: \texttt{tier\_10k} $\subset$ \texttt{tier\_100k}} exactly (verified directly: all 10{,}001 \texttt{tier\_10k} files appear in \texttt{tier\_100k}) -- so a valid scale comparison must hold the \emph{same} query tables fixed across tiers and observe how the surrounding datalake's growth changes outcomes, not optimize a different query set per tier.
+
+\vspace{6pt}
+The old approach (superseded here) inflated $|D|$ by \bad{relaxing \S7.3's retrieval rule itself} ($D_{sem}\cup D_{ovl}$). This section replaces that with santosLarge's maxD methodology instead -- \S7.3-faithful intersection retrieval throughout, applied to a single shared query set.
+
+{\footnotesize\color{Muted} Old union-mode report/figures backed up under \texttt{experiments/results/\_backup\_pre\_maxd\_wdc/}.}
+\end{frame}
+
+\begin{frame}{WDC: query selection -- one shared set, not per-tier}{Candidates drawn from \texttt{tier\_10k} only; maxD choice made using \texttt{tier\_100k}}
+\small
+\begin{enumerate}
+  \item Candidates drawn from \texttt{tier\_10k}'s table universe only (guaranteed present in every larger nested tier).
+  \item maxD attribute/value selection against the larger \texttt{tier\_100k} context (rank by free posting-list proxy, verify top 20 by real retrieval, keep the largest $|D|$).
+  \item That fixed \texttt{(table,attr,value)} triple is evaluated for real $|D|$ against every tier's own index.
+\end{enumerate}
+\vspace{4pt}
+{\footnotesize\color{Muted} \texttt{top\_n=5000}. \texttt{tier\_10k}$\subset$\texttt{tier\_100k}$\subset$\texttt{tier\_1m} nesting verified directly.}
+\end{frame}
+
+\begin{frame}{WDC: an unclamped-by-construction grid -- santosLarge rigor, applied here}{Revised after finding the original grid was 87\% clamped}
+\small
+An initial 30-cell grid ($k\in\{10..50\}\times\alpha\in\{10..60\}$, max pool 3{,}000) never required $|D|\geq\max(\alpha k)$ the way santosLarge's cohort did -- measured directly, \highlight{87.1\% of its 900 (query,cell) pairs were already clamped} at \texttt{top\_n=5000}. Reverted to santosLarge's discipline instead:
+
+\vspace{4pt}
+\begin{enumerate}
+  \item Widen the candidate pool to \highlight{210} (60 original + 150 more, same seeded shuffle).
+  \item Use $\min(D_{10k},D_{100k})$ as the binding threshold; derive the grid from the observed distribution: $k\in\{5,10,20\}\times\alpha\in\{5,10\}$ -- 6 cells, pools 25--200.
+  \item Retain every candidate with $\min(D_{10k},D_{100k})\geq 200$ -- guaranteed unclamped on \emph{both} tiers, every cell.
+\end{enumerate}
+\vspace{4pt}
+\highlight{67 of 210 retained (31.9\%)} -- comparable in spirit to santosLarge's 47/78.
+
+{\footnotesize\color{Muted} \texttt{experiments/wdc/wdc\_maxd\_selection\_unclamped.py}; notes in \texttt{experiments/results/wdc\_unclamped\_selection\_notes.md}.}
+\end{frame}
+
+\begin{frame}{WDC: choosing $F^\star,\delta,\tau$ -- 100\% joint feasibility}{$\tau$ floor 0.05, same round values as before}
+\small
+Swept for \emph{joint} feasibility on the new 6-cell grid + 67-candidate pool: a query only counts if every one of its 6 cells is feasible on \emph{both} tiers simultaneously.
+
+\vspace{6pt}
+\textbf{Chosen: $F^\star{=}0.20$, $\delta{=}0.10$, $\tau{=}0.10$}:
+
+\begin{center}
+\begin{tabular}{lccc}
+\toprule
+& \texttt{tier\_10k} feasible & \texttt{tier\_100k} feasible & \textbf{feasible on BOTH} \\
+\midrule
+of 67 candidates & 67/67 & 67/67 & \textbf{67/67 (100\%)} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{4pt}
+\highlight{Every candidate that cleared the $|D|\geq 200$ threshold is also fully feasible} -- no outlier exclusion needed, unlike the original design.
+\end{frame}
+
+\begin{frame}{WDC: final query cohort -- 67 tables, identical across tiers}{100\% retention at the chosen threshold/grid}
+\small
+\textbf{All 67 query tables (same attribute, same value) used against every tier} -- no exclusions.
+
+\vspace{6pt}
+\begin{itemize}
+  \item Threshold: $\min(D_{10k},D_{100k})\geq 200$, grid $k\in\{5,10,20\}\times\alpha\in\{5,10\}$ (max pool 200).
+  \item All 67 feasible across all 6 grid cells, on \emph{both} tiers.
+\end{itemize}
+
+\vspace{6pt}
+{\footnotesize\color{Muted} Final cohort: \texttt{experiments/results/wdc\_unclamped\_final\_cohort.csv}. \texttt{tier\_1m}'s embeddings/metadata store are built (\texttt{tier\_100k}$\subset$\texttt{tier\_1m} nesting verified) -- full end-to-end study on this 67-query cohort, all three tiers, still pending.}
+\end{frame}
+
+
+\begin{frame}{WDC: one-off index cost, all three tiers}{HNSW size scales linearly; build time does not scale uniformly}
+\small
+\begin{center}
+\begin{tabular}{lrrrrr}
+\toprule
+tier & tables & HNSW build & HNSW size & inv.\ build & inv.\ size \\
+\midrule
+\texttt{tier\_10k} & 10{,}000 & 13.9\,s & 163.6\,MB & 2.7\,s & 8.75\,MB \\
+\texttt{tier\_100k} & 100{,}000 & 200.8\,s & 1{,}633.0\,MB & 23.4\,s & 76.6\,MB \\
+\texttt{tier\_1m} & 999{,}999 & 1{,}284.8\,s & 16{,}322.8\,MB & 49.6\,s & 670.5\,MB \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{6pt}
+\highlight{HNSW size scales almost perfectly linearly} throughout (163.6\,MB $\to$ 1{,}633.0\,MB $\to$ 16{,}322.8\,MB -- $\sim$10$\times$ at every 10$\times$ step) -- expected, one fixed-size embedding per table regardless of scale. \highlight{HNSW build time scaling is NOT uniform}: $\sim$14.5$\times$ from \texttt{tier\_10k}$\to$\texttt{tier\_100k} (superlinear, $O(n\log n)$-consistent) but only $\sim$6.4$\times$ from \texttt{tier\_100k}$\to$\texttt{tier\_1m} (sublinear) -- not investigated further here, but a real, reported pattern rather than a single clean exponent. \highlight{Inverted-index vocabulary grows sublinearly at every step} (995{,}957 $\to$ 6{,}444{,}399 distinct values, $\sim$6.5$\times$ for $10\times$ tables): common values keep getting reused rather than each new table contributing an entirely new vocabulary.
+
+\vspace{2pt}
+{\footnotesize\color{Muted} Sizes are on-disk after native serialization (\texttt{hnswlib.save\_index}; pickled postings dict) -- neither index is persisted by the normal pipeline, both rebuilt in-memory on every \texttt{build\_wdc\_context} call. \texttt{tier\_1m} required a memory-frugal rewrite of the measurement script: this account has a hard 32GB per-process RSS limit (\texttt{ulimit -m}, confirmed non-adjustable), and the straightforward approach (keeping the raw vectors dict, its categorical-filtered copy, AND hnswlib's own internal copy alive at once) peaked near that ceiling and was twice silently killed. Script: \texttt{experiments/wdc/wdc\_index\_size\_report.py}.}
+\end{frame}
+
+\begin{frame}{HNSW size, explained: it's categorical columns, not tables}{santosLarge vs.\ all three WDC tiers -- same underlying constant}
+\small
+\texttt{HnswRetriever} only ever indexes \highlight{categorical columns} ($\theta_{\mathrm{cat}}{=}50$-bounded): \texttt{categorical\_only\_vectors} zeroes every non-categorical column's embedding before it reaches \texttt{hnswlib}, and \texttt{\_flatten} skips zero-norm rows -- so the indexed population matches the overlap index's exactly.
+
+\vspace{4pt}
+\begin{center}
+\begin{tabular}{lrrrr}
+\toprule
+dataset & total cols & \textbf{cat.\ cols (indexed)} & HNSW size & bytes/elem \\
+\midrule
+santosLarge & 121{,}796 & 84{,}157 (69.1\%) & 281.78\,MB & 3{,}511.4 \\
+\texttt{tier\_10k} & 51{,}854 & 48{,}857 (94.2\%) & 163.59\,MB & 3{,}512.0 \\
+\texttt{tier\_100k} & 518{,}131 & 487{,}728 (94.1\%) & 1{,}633.02\,MB & 3{,}512.6 \\
+\texttt{tier\_1m} & 5{,}177{,}216 & 4{,}874{,}987 (94.2\%) & 16{,}322.76\,MB & 3{,}512.1 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{6pt}
+\highlight{Bytes/element is a true constant, $\sim$3{,}512, across all four datasets} (768-dim float32 vector + \texttt{hnswlib} graph links at $M{=}32$) -- so index size is exactly (indexed elements) $\times$ (fixed per-element cost), nothing else. santosLarge's index is $\sim$58$\times$ smaller than \texttt{tier\_1m}'s purely because it has $\sim$58$\times$ fewer categorical columns (84{,}157 vs.\ 4{,}874{,}987) -- not because its tables are smaller (they aren't: santosLarge's are far \emph{bigger}, $\sim$5{,}000 rows vs.\ WDC's $\sim$6). \highlight{Coverage ratio explains why}: santosLarge's larger tables make $\theta_{\mathrm{cat}}{=}50$ a real, selective filter (69.1\%), while WDC's tiny tables (median $\sim$6 rows) mean \texttt{nunique(col)} is capped by row count itself, so almost every column qualifies as categorical (94.1--94.2\%, flat across all three tiers).
+
+\vspace{2pt}
+{\footnotesize\color{Muted} Total/categorical column counts computed directly from each tier's metadata store / \texttt{CsvSynopsis} (\texttt{experiments/context.py::column\_coverage\_stats}), $\theta_{\mathrm{cat}}{=}50$.}
+\end{frame}
+
+\begin{frame}{Inverted index size, explained: two different growth curves}{Not a fixed per-element cost like HNSW -- postings and vocabulary scale differently}
+\footnotesize
+\begin{center}
+\begin{tabular}{lrrrrr}
+\toprule
+dataset & cat.\ cols & distinct vals & postings & avg dom/col & avg fan-out \\
+\midrule
+santosLarge & 84{,}157 & 277{,}704 & 887{,}428 & 10.54 & 3.20 \\
+\texttt{tier\_10k} & 48{,}857 & 141{,}737 & 329{,}064 & 6.74 & 2.32 \\
+\texttt{tier\_100k} & 487{,}728 & 995{,}957 & 3{,}347{,}443 & 6.86 & 3.36 \\
+\texttt{tier\_1m} & 4{,}874{,}987 & 6{,}444{,}399 & 33{,}453{,}833 & 6.86 & 5.19 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{6pt}
+\highlight{Total postings tracks categorical-column count almost exactly linearly} (avg domain size/column is flat per dataset: $\sim$10.5 for santosLarge, $\sim$6.7--6.9 for WDC, capped by WDC's $\sim$6-row median table size, not corpus scale) -- this is why postings grow $\sim$10$\times$ per 10$\times$ WDC tables, matching column-count growth. \highlight{Vocabulary (distinct values) grows sub-linearly instead}: common web-table values (``1'', ``yes'', country names, \ldots) keep getting reused rather than each new table contributing new ones, so \highlight{average fan-out climbs with scale} (2.32 $\to$ 3.36 $\to$ 5.19) -- the same value attaches to more \texttt{(table,attr)} pairs as WDC grows.
+
+\vspace{4pt}
+Size itself is a \bad{pickle-framing proxy, not a native format} (unlike HNSW's \texttt{save\_index}) -- bytes/posting stays roughly stable ($\sim$20--28, pickle memoizes repeated table-name strings) but \highlight{bytes/distinct-value rises with scale} (63.7 $\to$ 64.7 $\to$ 80.6 $\to$ 109.1) since each key's \texttt{Set} payload grows with fan-out. Net effect: \texttt{tier\_1m}'s inverted index is $\sim$40$\times$ larger than santosLarge's (670.45\,MB vs.\ 16.86\,MB) -- smaller than the $\sim$58$\times$ column-count gap, because WDC's lower avg domain/column partly offsets its far larger column count.
+
+\vspace{2pt}
+{\footnotesize\color{Muted} avg dom/col = postings/cat.\ cols; avg fan-out = postings/distinct values. Same source data as the previous slide's inverted-index sizes.}
+\end{frame}
+
+\begin{frame}{WDC: Dinkelbach convergence vs.\ input pool size, all three tiers}{$k{=}20,\alpha{=}10$ (pool$=200$, the grid's own ceiling) -- 67-query cohort, all 6 top\_n values}
+\tiny
+\begin{center}
+\begin{tabular}{lrrrrrr}
+\toprule
+tier & top\_n & mean $|D|$ & n\_ran & n\_clamped & mean stage-1 & mean iters \\
+\midrule
+\texttt{tier\_10k} & 5{,}000 & 387.0 & 67 & 0 & 0.67\,ms & 2.16 \\
+\texttt{tier\_10k} & 10{,}000 & 618.4 & 67 & 0 & 1.26\,ms & 2.48 \\
+\texttt{tier\_10k} & 15{,}000 & 776.2 & 67 & 0 & 1.53\,ms & 2.48 \\
+\texttt{tier\_10k} & 20{,}000 & 854.1 & 67 & 0 & 1.72\,ms & 2.57 \\
+\texttt{tier\_10k} & 25{,}000 & 877.9 & 67 & 0 & 1.80\,ms & 2.57 \\
+\texttt{tier\_10k} & 30{,}000 & 882.6 & 67 & 0 & 1.88\,ms & 2.58 \\
+\texttt{tier\_100k} & 5{,}000 & 925.5 & 67 & 0 & 1.45\,ms & 1.99 \\
+\texttt{tier\_100k} & 10{,}000 & 1{,}409.1 & 67 & 0 & 2.25\,ms & 2.22 \\
+\texttt{tier\_100k} & 15{,}000 & 1{,}755.3 & 67 & 0 & 3.30\,ms & 2.31 \\
+\texttt{tier\_100k} & 20{,}000 & 2{,}048.0 & 67 & 0 & 4.08\,ms & 2.37 \\
+\texttt{tier\_100k} & 25{,}000 & 2{,}371.9 & 67 & 0 & 5.33\,ms & 2.42 \\
+\texttt{tier\_100k} & 30{,}000 & 2{,}630.7 & 67 & 0 & 6.44\,ms & 2.51 \\
+\texttt{tier\_1m} & 5{,}000 & 1{,}338.7 & 62 & 5 & 2.17\,ms & 1.58 \\
+\texttt{tier\_1m} & 10{,}000 & 2{,}629.7 & 66 & 1 & 4.82\,ms & 1.77 \\
+\texttt{tier\_1m} & 15{,}000 & 3{,}440.9 & 65 & 2 & 6.77\,ms & 1.85 \\
+\texttt{tier\_1m} & 20{,}000 & 4{,}215.8 & 66 & 1 & 7.87\,ms & 1.88 \\
+\texttt{tier\_1m} & 25{,}000 & 4{,}971.4 & 65 & 2 & 11.04\,ms & 1.86 \\
+\texttt{tier\_1m} & 30{,}000 & 5{,}633.9 & 65 & 2 & 11.56\,ms & 1.97 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{4pt}
+\footnotesize
+\highlight{Iteration count stays essentially flat (1.58--2.58) across three orders of magnitude of corpus size}, direct empirical support for the paper's ``converges in only a few iterations'' claim (\S5). \highlight{Stage-1 time tracks $|D|$, not $|T|$} and stays under 12\,ms everywhere. \highlight{Clamping is essentially absent at this grid's own ceiling}: 0/67 on \texttt{tier\_10k}/\texttt{tier\_100k}, only 1--5/67 on \texttt{tier\_1m} (mild non-monotonicity, not a bug).
+
+\vspace{2pt}
+{\footnotesize\color{Muted} \texttt{tier\_1m}'s context required a batched-\texttt{add\_items} HNSW build plus $M{=}16$ (vs.\ $M{=}32$ elsewhere) to fit this account's 32GB RSS ceiling -- a memory-driven exception, not a scalability finding; index now cached to disk. Script: \texttt{experiments/wdc/wdc\_topn\_pool\_sweep.py}.}
+\end{frame}
+
+\begin{frame}{WDC: Dinkelbach convergence at a second grid cell -- $k{=}10,\alpha{=}3$ (pool$=30$)}{Same 67-query cohort, same top\_n sweep -- a smaller, easier pool}
+\tiny
+\begin{center}
+\begin{tabular}{lrrrrrr}
+\toprule
+tier & top\_n & mean $|D|$ & n\_ran & n\_clamped & mean stage-1 & mean iters \\
+\midrule
+\texttt{tier\_10k} & 5{,}000 & 387.0 & 67 & 0 & 0.54\,ms & 2.06 \\
+\texttt{tier\_10k} & 10{,}000 & 618.3 & 67 & 0 & 0.87\,ms & 1.94 \\
+\texttt{tier\_10k} & 15{,}000 & 775.7 & 67 & 0 & 1.11\,ms & 2.00 \\
+\texttt{tier\_10k} & 20{,}000 & 853.3 & 67 & 0 & 1.21\,ms & 1.93 \\
+\texttt{tier\_10k} & 25{,}000 & 877.2 & 67 & 0 & 1.23\,ms & 1.93 \\
+\texttt{tier\_10k} & 30{,}000 & 881.9 & 67 & 0 & 1.27\,ms & 1.93 \\
+\texttt{tier\_100k} & 5{,}000 & 807.9 & 67 & 0 & 1.31\,ms & 1.76 \\
+\texttt{tier\_100k} & 10{,}000 & 1{,}289.4 & 67 & 0 & 1.90\,ms & 1.75 \\
+\texttt{tier\_100k} & 15{,}000 & 1{,}571.3 & 67 & 0 & 2.12\,ms & 1.66 \\
+\texttt{tier\_100k} & 20{,}000 & 1{,}847.5 & 67 & 0 & 2.47\,ms & 1.73 \\
+\texttt{tier\_100k} & 25{,}000 & 2{,}111.3 & 67 & 0 & 3.63\,ms & 1.75 \\
+\texttt{tier\_100k} & 30{,}000 & 2{,}368.6 & 67 & 0 & 3.54\,ms & 1.70 \\
+\texttt{tier\_1m} & 5{,}000 & 1{,}071.4 & 66 & 1 & 1.42\,ms & 1.47 \\
+\texttt{tier\_1m} & 10{,}000 & 1{,}898.0 & 66 & 1 & 2.81\,ms & 1.48 \\
+\texttt{tier\_1m} & 15{,}000 & 2{,}840.6 & 66 & 1 & 4.90\,ms & 1.61 \\
+\texttt{tier\_1m} & 20{,}000 & 3{,}559.3 & 66 & 1 & 6.13\,ms & 1.52 \\
+\texttt{tier\_1m} & 25{,}000 & 4{,}355.4 & 66 & 1 & 7.61\,ms & 1.52 \\
+\texttt{tier\_1m} & 30{,}000 & 5{,}133.4 & 66 & 1 & 10.57\,ms & 1.61 \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{3pt}
+\footnotesize
+\highlight{Same qualitative findings, more strongly}: mean iterations are lower still (1.47--2.06 vs.\ 1.58--2.58) -- a smaller pool is a cheaper top-$k$ selection. \highlight{Clamping is even rarer}: 0/67 on \texttt{tier\_10k}/\texttt{tier\_100k}, a consistent 1/67 on \texttt{tier\_1m} at every \texttt{top\_n}.
+
+\vspace{1pt}
+{\footnotesize\color{Muted} \texttt{tier\_1m} loaded its index from the previous slide's disk cache (seconds, not $\sim$14\,min). Caveat: \texttt{tier\_100k}'s mean $|D|$ differs slightly from the previous slide's despite retrieval not depending on $k/\alpha$ -- hnswlib's multi-threaded build is seed-deterministic in its own choices but not concurrent insertion order, so independent rebuilds over identical data can differ slightly. Full data: \texttt{wdc\_topn\_pool\_sweep\_k10\_a3.csv}.}
+\end{frame}
+
+\begin{frame}{WDC: Stage 2 execution time -- LP pre-check vs.\ MILP solver, all three tiers}{top\_n$=5000$, $\alpha\in\{10,5\}\times k\in\{5,10,20\}$, 67-query cohort -- WDC analogue of santosLarge \S5c}
+\tiny
+\begin{center}
+\begin{tabular}{lrrrrrrrrr}
+\toprule
+tier & $\alpha$ & $k$ & pool & clamped & feasible & LP precheck & MILP solver & \textbf{pre+solver} & full wall \\
+\midrule
+\texttt{tier\_10k} & 10 & 5 & 50 & 0 & 67/67 & 1.071\,ms & 1.583\,ms & \textbf{2.654\,ms} & 2.905\,ms \\
+\texttt{tier\_10k} & 10 & 10 & 100 & 0 & 67/67 & 0.994\,ms & 1.697\,ms & \textbf{2.691\,ms} & 2.938\,ms \\
+\texttt{tier\_10k} & 10 & 20 & 200 & 0 & 67/67 & 1.202\,ms & 2.162\,ms & \textbf{3.364\,ms} & 3.651\,ms \\
+\texttt{tier\_10k} & 5 & 5 & 25 & 0 & 67/67 & 0.873\,ms & 1.426\,ms & \textbf{2.299\,ms} & 2.530\,ms \\
+\texttt{tier\_10k} & 5 & 10 & 50 & 0 & 67/67 & 0.891\,ms & 1.467\,ms & \textbf{2.359\,ms} & 2.593\,ms \\
+\texttt{tier\_10k} & 5 & 20 & 100 & 0 & 67/67 & 0.980\,ms & 1.677\,ms & \textbf{2.658\,ms} & 2.905\,ms \\
+\texttt{tier\_100k} & 10 & 5 & 50 & 0 & 67/67 & 1.183\,ms & 2.148\,ms & \textbf{3.331\,ms} & 3.625\,ms \\
+\texttt{tier\_100k} & 10 & 10 & 100 & 0 & 67/67 & 1.181\,ms & 2.887\,ms & \textbf{4.068\,ms} & 4.364\,ms \\
+\texttt{tier\_100k} & 10 & 20 & 200 & 0 & 67/67 & 1.376\,ms & 4.341\,ms & \textbf{5.717\,ms} & 6.048\,ms \\
+\texttt{tier\_100k} & 5 & 5 & 25 & 0 & 67/67 & 0.992\,ms & 2.322\,ms & \textbf{3.314\,ms} & 3.583\,ms \\
+\texttt{tier\_100k} & 5 & 10 & 50 & 0 & 67/67 & 1.019\,ms & 2.122\,ms & \textbf{3.141\,ms} & 3.421\,ms \\
+\texttt{tier\_100k} & 5 & 20 & 100 & 0 & 67/67 & 1.135\,ms & 3.221\,ms & \textbf{4.357\,ms} & 4.648\,ms \\
+\texttt{tier\_1m} & 10 & 5 & 50 & 1 & 60/67 & 1.682\,ms & 2.153\,ms & \textbf{3.835\,ms} & 3.912\,ms \\
+\texttt{tier\_1m} & 10 & 10 & 100 & 1 & 60/67 & 1.201\,ms & 2.210\,ms & \textbf{3.411\,ms} & 3.449\,ms \\
+\texttt{tier\_1m} & 10 & 20 & 200 & 4 & 60/67 & 1.354\,ms & 2.705\,ms & \textbf{4.059\,ms} & 4.073\,ms \\
+\texttt{tier\_1m} & 5 & 5 & 25 & 1 & 60/67 & 0.976\,ms & 1.706\,ms & \textbf{2.682\,ms} & 2.746\,ms \\
+\texttt{tier\_1m} & 5 & 10 & 50 & 1 & 60/67 & 0.990\,ms & 1.812\,ms & \textbf{2.802\,ms} & 2.860\,ms \\
+\texttt{tier\_1m} & 5 & 20 & 100 & 1 & 60/67 & 1.086\,ms & 1.962\,ms & \textbf{3.048\,ms} & 3.098\,ms \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{3pt}
+\footnotesize
+\highlight{Stage 2 is a few ms everywhere} (2.3--6.0\,ms), growing $\sim$1.5--1.7$\times$ for an 8$\times$ larger pool and only $\sim$1.4$\times$ for 100$\times$ more tables; the MILP is $\sim$55--76\% of pre+solver. \highlight{New at \texttt{tier\_1m}: the LP pre-check becomes decisive} -- 7/67 queries are LP-infeasible at every cell (MILP skipped), since the cohort's $\tau$ was validated only on the two smaller tiers.
+
+\vspace{1pt}
+{\footnotesize\color{Muted} $U$ is seeded synthetic uniform(0,1), not real unionability (\texttt{tier\_1m}'s lean context has no full vectors dict); retrieval re-run per tier, so $|D|$ is not bit-identical to earlier slides for the smaller tiers; \texttt{tier\_1m} uses the cached $M{=}16$ index. LP averaged over all rows, MILP over LP-feasible rows only. Script: \texttt{wdc\_stage2\_timing.py}.}
+\end{frame}
+
+\begin{frame}{WDC \texttt{tier\_1m}: what the LP pre-check saves on the 7 infeasible queries}{MILP skipped when the LP proves infeasibility -- measured by re-running those 7 pools with and without the pre-check}
+\small
+\begin{center}
+\begin{tabular}{rrrrrr}
+\toprule
+$\alpha$ & $k$ & pool & with pre-check & MILP only (no pre-check) & saved / query \\
+\midrule
+10 & 20 & 200 & 1.004\,ms & 1.102\,ms & 0.098\,ms \\
+10 & 10 & 100 & 0.862\,ms & 1.096\,ms & 0.234\,ms \\
+10 & 5 & 50 & 0.895\,ms & 1.133\,ms & 0.238\,ms \\
+5 & 20 & 100 & 0.839\,ms & 1.033\,ms & 0.194\,ms \\
+5 & 10 & 50 & 0.763\,ms & 1.005\,ms & 0.242\,ms \\
+5 & 5 & 25 & 0.738\,ms & 1.015\,ms & 0.277\,ms \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{6pt}
+\highlight{The saving is small: $\sim$0.1--0.28\,ms per skipped query, $\sim$0.7--1.9\,ms across all 7.} HiGHS also detects infeasibility quickly on its own, so skipping the MILP avoids $\sim$1\,ms of work while the LP itself costs $\sim$0.7--0.9\,ms -- at these pool sizes the pre-check is close to break-even. Its value here is soundness and avoiding branch-and-bound on harder instances, which these pools are not.
+
+\vspace{2pt}
+{\footnotesize\color{Muted} Median of 5 in-process repetitions per pool, warm caches, so absolute values are lower than the previous slide's means (which include cold runs and feasible rows); treat as $\pm$30\%. Both variants returned infeasible on every pool. Same seeded synthetic $U$ and $\tau{=}0.10$ as the previous slide.}
+\end{frame}
+
+\begin{frame}{WDC: per-stage and end-to-end time, real unionability, all three tiers}{top\_n$=5000$, $\alpha\in\{10,5\}\times k\in\{5,10,20\}$, 67-query cohort -- mean ms}
+\tiny
+\begin{center}
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{lrrrrrrrrrrrr}
+\toprule
+tier & $\alpha$ & $k$ & pool & clamp & feas. & retrieval & Stage 1 & \textbf{unionab.} & LP & MILP & Stage 2 & \textbf{end-to-end} \\
+\midrule
+\texttt{tier\_10k} & 10 & 5 & 50 & 0 & 67/67 & 15.9 & 0.62 & 12.83 & 1.57 & 2.23 & 4.05 & \textbf{33.4} \\
+\texttt{tier\_10k} & 10 & 10 & 100 & 0 & 67/67 & 15.9 & 0.89 & 24.96 & 1.27 & 2.22 & 3.73 & \textbf{45.4} \\
+\texttt{tier\_10k} & 10 & 20 & 200 & 0 & 67/67 & 15.9 & 0.98 & 45.94 & 1.53 & 2.81 & 4.62 & \textbf{67.4} \\
+\texttt{tier\_10k} & 5 & 5 & 25 & 0 & 67/67 & 15.9 & 0.93 & 8.28 & 1.02 & 1.85 & 3.08 & \textbf{28.2} \\
+\texttt{tier\_10k} & 5 & 10 & 50 & 0 & 67/67 & 15.9 & 0.79 & 13.85 & 1.05 & 1.98 & 3.25 & \textbf{33.7} \\
+\texttt{tier\_10k} & 5 & 20 & 100 & 0 & 67/67 & 15.9 & 0.88 & 25.06 & 1.19 & 2.21 & 3.64 & \textbf{45.4} \\
+\texttt{tier\_100k} & 10 & 5 & 50 & 0 & 67/67 & 33.0 & 1.19 & 12.55 & 1.57 & 2.26 & 4.09 & \textbf{50.8} \\
+\texttt{tier\_100k} & 10 & 10 & 100 & 0 & 67/67 & 33.0 & 1.76 & 26.69 & 1.28 & 2.43 & 3.96 & \textbf{65.4} \\
+\texttt{tier\_100k} & 10 & 20 & 200 & 0 & 67/67 & 33.0 & 1.85 & 49.08 & 1.44 & 2.96 & 4.67 & \textbf{88.6} \\
+\texttt{tier\_100k} & 5 & 5 & 25 & 0 & 67/67 & 33.0 & 1.75 & 7.66 & 0.99 & 1.85 & 3.05 & \textbf{45.5} \\
+\texttt{tier\_100k} & 5 & 10 & 50 & 0 & 67/67 & 33.0 & 1.61 & 13.14 & 0.98 & 1.88 & 3.08 & \textbf{50.8} \\
+\texttt{tier\_100k} & 5 & 20 & 100 & 0 & 67/67 & 33.0 & 1.70 & 25.35 & 1.18 & 2.28 & 3.70 & \textbf{63.8} \\
+\texttt{tier\_1m} & 10 & 5 & 50 & 1 & 60/67 & 351.3 & 1.46 & 11.71 & 2.14 & 3.42 & 5.48 & \textbf{370.0} \\
+\texttt{tier\_1m} & 10 & 10 & 100 & 1 & 60/67 & 351.3 & 2.07 & 24.52 & 1.27 & 2.37 & 3.62 & \textbf{381.5} \\
+\texttt{tier\_1m} & 10 & 20 & 200 & 4 & 60/67 & 351.3 & 2.07 & 46.01 & 1.41 & 5.40 & 6.49 & \textbf{405.9} \\
+\texttt{tier\_1m} & 5 & 5 & 25 & 1 & 60/67 & 351.3 & 1.99 & 7.03 & 1.01 & 1.86 & 2.86 & \textbf{363.2} \\
+\texttt{tier\_1m} & 5 & 10 & 50 & 1 & 60/67 & 351.3 & 1.93 & 12.68 & 1.01 & 1.94 & 2.95 & \textbf{368.9} \\
+\texttt{tier\_1m} & 5 & 20 & 100 & 1 & 60/67 & 351.3 & 1.95 & 24.12 & 1.15 & 2.58 & 3.66 & \textbf{381.1} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\vspace{3pt}
+\footnotesize
+\highlight{Retrieval is the only stage that grows with the corpus}: 15.9 $\to$ 33.0 $\to$ 351.3\,ms per query, 86--97\% of end-to-end on \texttt{tier\_1m}. \highlight{Unionability scoring is linear in the pool, independent of the corpus}: $\sim$0.23--0.26\,ms per pool table on every tier (200 tables: 45.9 / 49.1 / 46.0\,ms) -- the $\alpha k$ efficiency claim, measured. Stage 1 (0.6--2.1\,ms) and Stage 2 (2.9--6.5\,ms) stay small and scale-free.
+
+\vspace{1pt}
+{\footnotesize\color{Muted} Real pinned-match $U$ ($\sigma{=}0.6$), supersedes the synthetic-$U$ Stage 2 slide. Retrieval (HNSW probe + overlap filter + $N_i/n_i$ lookup) is independent of $k,\alpha$ and timed once per query. \texttt{tier\_1m}: cached $M{=}16$ index, peak RSS $\approx$31.8\,GiB of the 32\,GiB cap (tight). MILP averaged over LP-feasible rows. Details: \texttt{wdc-report.md} \S5.}
+\end{frame}
+
+
+
+% ============================================================================
+\section{Takeaways}
+% ============================================================================
+\begin{frame}{Takeaways}
+\footnotesize
+\begin{itemize}
+  \item The pipeline has \textbf{four} short-circuit points -- two before Stage 1 even runs (\texttt{insufficient\_candidates}, the C5 clamp), two around Stage 2 (LP-decisive, \texttt{stage2\_infeasible}).
+  \vspace{2pt}
+  \item \textbf{santos3} (solvable-only, $\alpha{=}2$, $k\in\{3,5\}$): the pipeline is exact where a solution exists (86/86), Stage 1 is nearly free and already buys a measurable 1.3--1.4$\times$ speedup (18 of 86 rows C5-clamped, not most), but the LP pre-check still never fires -- this cohort is solvable-only by construction, so there's nothing for it to catch.
+  \vspace{2pt}
+  \item \textbf{santosLarge} (redesigned: attributes/values deliberately chosen to maximize $|D|$, $|D|\geq 60$ cohort, $F^\star{=}0.122/\delta{=}0.07/\tau{=}0.052$ chosen to maximize reach without a degenerate $\tau$): the \emph{same} pipeline shows what santos3 cannot -- scoring cost scaling with $\alpha k$, Stage 1 buying a real 1.7--2.8$\times$ speedup at a 5--9\% $\Sigma U$ cost, and (unlike the original random-assignment cohort, where the LP pre-check was decisive on 37\% of instances) every one of the 46 retained queries is feasible in all 6 configs, so the LP pre-check has nothing left to catch here either.
+  \vspace{2pt}
+  \item \textbf{WDC, all three tiers} (redesigned, replacing the old $D_{sem}\cup D_{ovl}$ relaxation): santosLarge's maxD attribute/value selection, applied under \S7.3-faithful intersection retrieval to \highlight{the same query tables at every scale} ($\texttt{tier\_10k}\subset\texttt{tier\_100k}\subset\texttt{tier\_1m}$, verified) -- not independently-optimized per-tier cohorts. An initial 30-cell grid proved 87.1\% clamped; reverted to a santosLarge-style unclamped-by-construction 6-cell grid ($k\in\{5,10,20\}\times\alpha\in\{5,10\}$, max pool 200) over a widened 210-candidate pool, with $F^\star{=}0.20/\delta{=}0.10/\tau{=}0.10$ ($\tau$ floor 0.05) achieving \highlight{100\% joint feasibility (67/67)} on both tiers simultaneously. At $k{=}20,\alpha{=}10$ (pool$=200$), Dinkelbach converges in 1.58--2.58 mean iterations and under 12\,ms mean Stage-1 time \highlight{across all three tiers, three orders of magnitude of table count} -- clamping is essentially absent (0/67 on \texttt{tier\_10k}/\texttt{tier\_100k}, 1--5/67 on \texttt{tier\_1m}, a mild non-monotonicity effect, not a bug).
+  \vspace{2pt}
+  \item \textbf{Together}: santos3 answers "is it correct and fast at native scale?"; santosLarge answers "does the two-stage design's efficiency claim hold when it has room to matter?"; WDC (all three tiers, redesigned cohort) confirms it does on an uncurated corpus too, at genuine million-table scale.
+\end{itemize}
+\end{frame}
+
+\end{document}

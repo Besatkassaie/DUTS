@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Regenerable experiment scratch (HNSW indexes, ~21 GB) and pickle caches
+experiments/results/_baseline_scratch/
+*.pkl
+*.bin
+
+# Claude Code local settings
+.claude/settings.local.json
+.claude/scheduled_tasks.lock

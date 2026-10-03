@@ -1,0 +1,170 @@
+% Per-step runtime vs. candidate pool size, santosLarge.
+%
+% Source data: experiments/results/santoslarge_maxd_topn5000_D60.csv, reduced by
+% experiments/end2end_santoslarge_report.py into:
+%   - experiments/results/end2end_santoslarge_raw.csv          (long format, per-query -- for figures)
+%   - experiments/results/end2end_santoslarge_by_poolsize.csv  (this file's tables, resolved)
+%
+% Fixed settings: top_n = 5000, F* = 0.122, delta = 0.07 (tau = F*-delta = 0.052),
+% the 46-query maxD-selected santosLarge cohort (|D| >= 60, one tau=0.05 outlier
+% excluded -- see experiments/RESULTS-santoslarge.md Sec. 0 and Sec. 4).
+%
+% Grid: k in {10,15} x alpha in {2,3,4} -> pool size (alpha*k) in {20,30,40,30,45,60}.
+% Pool size 30 is produced by TWO different (k,alpha) pairs -- (k=10,alpha=3) and
+% (k=15,alpha=2). At every statistic (mean/median/max/min) for every metric, the
+% pool=30 row reports the LARGER of the two pairs' values for that statistic --
+% an elementwise max across the two combos, not an average and not a fixed choice
+% of one combo over the other. This is a deliberate, documented worst-case
+% convention (chosen by the user), not a data artifact.
+%
+% All five metrics below are read directly off existing per-query timing fields in
+% santoslarge_maxd_topn5000_D60.csv -- no new instrumentation or rerun was needed.
+% Units: milliseconds, mean of 46 per-query values per (pool size, statistic) cell
+% (46 values collapse to 1 via mean/median/max/min; the "n=46" is constant across
+% every row and every metric, so it is not repeated in each table).
+
+\section{Per-step runtime vs. candidate pool size (santosLarge)}
+
+\subsection{What each of the five numbers means}
+
+\begin{description}
+  \item[Index probe total] Wall time for \emph{everything that happens before Stage 1
+    runs}: the semantic (HNSW) nearest-neighbor probe over the query's $V_D$
+    embedding, the value-overlap probe (an exact posting-list lookup for every value
+    in $M$), their pair-level intersection (\S7.3's combine rule: a $(table,attr)$
+    pair must survive \emph{both} filters, then each table is reduced to its single
+    highest-similarity surviving attribute), and the per-candidate $N_i/n_i$
+    synopsis lookup that turns the surviving $(table,attr)$ pairs into
+    \texttt{CandidateStats}. This is retrieval in full -- it does not depend on
+    $k$ or $\alpha$ at all (only on \texttt{top\_n}, fixed at 5000 here), which is
+    why every pool-size row below has an \emph{identical} index-probe-total figure:
+    retrieval is performed once per query and reused across every $(k,\alpha)$
+    setting, so its cost is a function of the query alone, not of the pool size
+    asked for downstream.
+  \item[Stage 1 total] Wall time for Dinkelbach's method (\S5) selecting the pool
+    $P$ of size $\alpha k$ from $D$ by unbounded $\arg\max F$ -- or, when
+    $\alpha k \ge |D|$ (the C5 clamp), the near-zero cost of the no-op
+    $P \gets D$. Depends only on $|D|$ and the requested pool size, never on
+    unionability.
+  \item[Unionability computation total] Wall time to compute $U_{V_D}(Q,T_i)$ for
+    every candidate in $P$ (the constrained bipartite-matching alignment, \S6.2) --
+    strictly \emph{between} the two stages, not part of either: Stage 1 never touches
+    $U$, and Stage 2 only consumes already-computed $U$ values in its objective. This
+    is the term the paper's central efficiency claim is about: its cost is
+    $O(|P|) = O(\alpha k)$, independent of $|T|$ (the full datalake size), which is
+    exactly why it grows with pool size across the rows below while index-probe-total
+    does not.
+  \item[Stage 2 total] Wall time for the 0--1 ILP (\S6.1): the LP feasibility
+    pre-check (\texttt{linprog}), the actual \texttt{scipy.optimize.milp}
+    branch-and-bound solve, and the constraint-matrix setup plus the post-solve
+    verification asserts that guard against the presolve trap documented in
+    \texttt{duts/stage2\_ilp.py}. Reported here as one combined figure; a further
+    breakdown into precheck-only vs.\ solver-only time (excluding the setup/verification
+    remainder) is in \texttt{RESULTS-santoslarge.md} \S5c if a finer split is needed.
+  \item[End-to-end total] The sum of all per-query wall time in the two-stage arm:
+    index probe + Stage 1 + unionability computation + Stage 2. This is what a user
+    of the system actually waits for, per query.
+\end{description}
+
+\subsection{Index probe total (ms)}
+\begin{center}
+\begin{tabular}{ccccc}
+\toprule
+pool size ($\alpha k$) & mean & median & max & min \\
+\midrule
+20 & 38.37 & 29.63 & 218.85 & 15.33 \\
+30 & 38.37 & 29.63 & 218.85 & 15.33 \\
+40 & 38.37 & 29.63 & 218.85 & 15.33 \\
+45 & 38.37 & 29.63 & 218.85 & 15.33 \\
+60 & 38.37 & 29.63 & 218.85 & 15.33 \\
+\bottomrule
+\end{tabular}
+\end{center}
+Identical at every pool size, by construction (see above) -- included as its own
+row set for completeness/plotting rather than folded into a single number, and to
+make explicit that it is \emph{not} a function of pool size on this benchmark.
+Mean $\gg$ median (38.4 vs.\ 29.6\,ms) reflects a right-skewed distribution across
+the 46 queries: most queries retrieve quickly, a handful with much larger
+post-overlap-filter candidate counts pull the mean up.
+
+\subsection{Stage 1 total (ms)}
+\begin{center}
+\begin{tabular}{ccccc}
+\toprule
+pool size ($\alpha k$) & mean & median & max & min \\
+\midrule
+20 & 0.189 & 0.164 & 0.610 & 0.074 \\
+30 & 0.194 & 0.167 & 0.798 & 0.055 \\
+40 & 0.199 & 0.160 & 0.696 & 0.072 \\
+45 & 0.196 & 0.159 & 0.741 & 0.054 \\
+60 & 0.205 & 0.164 & 0.741 & 0.054 \\
+\bottomrule
+\end{tabular}
+\end{center}
+Sub-millisecond throughout and only mildly sensitive to pool size (mean 0.189 to
+0.205\,ms across a 3$\times$ pool-size range) -- consistent with the
+\S4/\S4b finding that Dinkelbach's iteration count, not the pool size it fills,
+dominates its cost, and that cost is driven far more by the \emph{input} $|D|$
+(\S4b) than by the requested output pool size shown here.
+
+\subsection{Stage 2 total (ms)}
+\begin{center}
+\begin{tabular}{ccccc}
+\toprule
+pool size ($\alpha k$) & mean & median & max & min \\
+\midrule
+20 & 2.055 & 1.738 & 8.420 & 1.344 \\
+30 & 2.160 & 1.808 & 8.814 & 1.413 \\
+40 & 2.224 & 1.836 & 7.864 & 1.403 \\
+45 & 2.337 & 1.993 & 7.890 & 1.465 \\
+60 & 2.518 & 2.033 & 8.584 & 1.527 \\
+\bottomrule
+\end{tabular}
+\end{center}
+Grows steadily but modestly with pool size (mean 2.05\,ms at pool 20 to 2.52\,ms
+at pool 60, $\sim$23\% over a 3$\times$ larger pool) -- the ILP's variable count
+scales with $|P|=\alpha k$, so more binary decision variables enter both the LP
+pre-check and the \texttt{milp} solve as pool size grows.
+
+\subsection{Unionability computation total (ms)}
+\begin{center}
+\begin{tabular}{ccccc}
+\toprule
+pool size ($\alpha k$) & mean & median & max & min \\
+\midrule
+20 & 28.18 & 9.65 & 182.40 & 2.73 \\
+30 & 42.17 & 15.59 & 275.25 & 4.67 \\
+40 & 55.87 & 21.58 & 362.35 & 5.88 \\
+45 & 60.97 & 24.99 & 386.19 & 6.81 \\
+60 & 81.15 & 31.98 & 505.85 & 8.79 \\
+\bottomrule
+\end{tabular}
+\end{center}
+The clearest pool-size dependence of the five: mean grows $\sim$2.9$\times$ from
+pool 20 to pool 60, tracking $|P|=\alpha k$ almost linearly -- exactly the
+$O(|P|)$ behavior the paper's efficiency claim predicts, and the reason the
+two-stage design pays off at all (\S6's skip-Stage-1 comparison: scoring all of
+$D$ instead of just $P$ costs far more). Also the most right-skewed metric here
+(mean more than 2.5$\times$ the median at every pool size), inherited directly
+from the same skew in $|D|$/index-probe-total across queries.
+
+\subsection{End-to-end total (ms)}
+\begin{center}
+\begin{tabular}{ccccc}
+\toprule
+pool size ($\alpha k$) & mean & median & max & min \\
+\midrule
+20 & 68.80 & 50.50 & 252.70 & 24.23 \\
+30 & 82.68 & 57.30 & 311.54 & 25.95 \\
+40 & 96.66 & 63.68 & 399.07 & 27.88 \\
+45 & 101.88 & 66.12 & 415.57 & 29.04 \\
+60 & 122.25 & 74.18 & 535.08 & 32.29 \\
+\bottomrule
+\end{tabular}
+\end{center}
+Dominated by index-probe-total and unionability-total, in that order -- Stage 1
+and Stage 2 together account for well under 5\% of end-to-end time at every pool
+size (e.g.\ pool 60: $(0.205+2.518)/122.25 \approx 2.2\%$). The pool-size growth
+in end-to-end time (68.8 to 122.2\,ms mean, $\sim$1.8$\times$) is therefore
+almost entirely attributable to unionability computation's near-linear growth
+with $|P|$, not to either stage's own solve time.

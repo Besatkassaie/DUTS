@@ -1,0 +1,7 @@
+[santosLarge] ctx ready, 46 cohort queries
+  [santosLarge] 10/46
+  [santosLarge] 20/46
+  [santosLarge] 30/46
+  [santosLarge] 40/46
+[santosLarge] 46 rows, 0 excluded (|D|<k)
+wrote /u6/bkassaie/DUTS/experiments/results/stage1_benefit_santosLarge.csv 46

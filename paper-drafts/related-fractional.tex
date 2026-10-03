@@ -1,0 +1,36 @@
+% Related Work -- fractional/linear programming subsection.
+% Revision of the "Franctional programing" paragraph. New citation keys are listed in
+% related-fractional.bib; keep your own keys if they already exist.
+
+\paragraph{Fractional and linear programming for distributional constraints.}
+Stage 1 maximizes a ratio of two linear functions of binary decision variables, placing it in
+the class of \emph{fractional $0$--$1$ programs} (also called hyperbolic $0$--$1$ programs),
+surveyed by Borrero et al.~\cite{borrero2017fractional}. For continuous variables, Charnes and
+Cooper~\cite{charnes1962programming} showed that a linear-fractional program can be linearized
+by a change of variables and solved as a single linear program, but this transformation does
+not survive the integrality restriction. We therefore use the parametric method of
+Dinkelbach~\cite{dinkelbach1967nonlinear}, which replaces the ratio with a sequence of linear
+objectives of the form $N(S) - \lambda\,n(S)$ and updates $\lambda$ to the ratio achieved by
+the incumbent solution. Each iteration is thus an ordinary linear maximization over the same
+feasible set---in our case a single top-$\alpha k$ selection---and the sequence converges to
+the exact optimum. The rapid convergence we observe empirically (Section~\ref{sec:dinkelbach})
+is consistent with what is known for the combinatorial case: Megiddo's parametric
+search~\cite{megiddo1979combinatorial} and Radzik's analysis of Newton's
+method~\cite{radzik1992newton}, of which Dinkelbach's method is an instance, establish
+strongly polynomial bounds on the number of iterations required for fractional combinatorial
+optimization.
+
+Constraints of this ratio form recur throughout the fairness literature, since most group
+fairness criteria compare selection or error rates \emph{between} groups. Celis et
+al.~\cite{DBLP:conf/fat/CelisHKV19} give a meta-algorithm for classification subject to any
+fairness metric expressible as a linear-fractional constraint, which covers statistical parity,
+false discovery rate, and related group measures, and Chen and
+Hooker~\cite{chen2021guide} survey the wider space of fairness and equity criteria in
+optimization models, including proportional and ratio-based formulations. Our setting differs
+in where the ratio arises. In these works the ratio is evaluated over a fixed dataset or a
+fixed ground set of decisions, whereas in DUTS each selected table contributes both matching
+tuples and total tuples, so the numerator and the denominator of the achieved proportion are
+both determined by the selection itself. The distributional requirement is therefore genuinely
+fractional rather than a linear constraint in disguise, which is what makes the fractional
+programming machinery necessary rather than merely convenient. To the best of our knowledge,
+this is the first application of fractional programming to table search over data lakes.

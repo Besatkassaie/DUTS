@@ -1,0 +1,24 @@
+[santosLarge] loaded cached HNSW (84157 items) from /u6/bkassaie/wdc_data/cache/santosLarge_hnsw_m32_tc50_sig06.bin
+index build: 482.3s over 11086 tables
+top_n=5000: 46 cohort queries loaded (0 skipped)
+  done top_n=5000
+top_n=10000: 46 cohort queries loaded (0 skipped)
+  done top_n=10000
+top_n=15000: 46 cohort queries loaded (0 skipped)
+  done top_n=15000
+top_n=20000: 46 cohort queries loaded (0 skipped)
+  done top_n=20000
+top_n=25000: 46 cohort queries loaded (0 skipped)
+  done top_n=25000
+top_n=30000: 46 cohort queries loaded (0 skipped)
+  done top_n=30000
+
+wrote /u6/bkassaie/DUTS/experiments/results/santoslarge_topn_pool_sweep.csv (276 rows)
+
+   top_n    mean|D|    n_ran      mean_ms  mean_iter   iter_range
+    5000      160.3       46       0.3204       2.26          1-5 (clamped 0/46)
+   10000      208.7       46       0.3913       2.22          1-4 (clamped 0/46)
+   15000      236.0       46       0.4522       2.26          1-4 (clamped 0/46)
+   20000      250.6       46       0.4743       2.28          1-4 (clamped 0/46)
+   25000      257.9       46       0.4827       2.28          1-4 (clamped 0/46)
+   30000      259.0       46       0.4850       2.28          1-4 (clamped 0/46)

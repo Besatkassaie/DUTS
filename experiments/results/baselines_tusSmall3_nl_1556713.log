@@ -1,0 +1,12 @@
+[tusSmall3/nl] 92 queries, 8 workers
+  [tusSmall3/nl] 10/92 queries
+  [tusSmall3/nl] 20/92 queries
+  [tusSmall3/nl] 30/92 queries
+  [tusSmall3/nl] 40/92 queries
+  [tusSmall3/nl] 50/92 queries
+  [tusSmall3/nl] 60/92 queries
+  [tusSmall3/nl] 70/92 queries
+  [tusSmall3/nl] 80/92 queries
+  [tusSmall3/nl] 90/92 queries
+  [tusSmall3/nl] 92/92 queries
+[tusSmall3/nl] wrote /u6/bkassaie/DUTS/experiments/results/baselines_tusSmall3_nl.csv (276 rows); elapsed 99s; peak child rss 3.4GB

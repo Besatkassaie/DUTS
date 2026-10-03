@@ -1,0 +1,125 @@
+% \usepackage{booktabs,longtable,threeparttable} required (threeparttable's tnote/minipage style reused inside a longtable here since threeparttable itself does not support longtable)
+
+\begin{longtable}{llrrrr}
+\caption{Per-step wall-clock time vs. $k$, tier\_100k at $\alpha$=10 fixed, \texttt{top\_n}=5000, $\sigma$=0.60, pooled over 5 repeated runs per $k$.}\label{tab:wdc-k-sweep-timing-tier_100k} \\
+\toprule
+$k$ & Step & Mean (ms) & Median (ms) & Min (ms) & Max (ms) \\
+\midrule
+\endfirsthead
+\multicolumn{6}{l}{\textit{(continued)}} \\
+\toprule
+$k$ & Step & Mean (ms) & Median (ms) & Min (ms) & Max (ms) \\
+\midrule
+\endhead
+\midrule
+\multicolumn{6}{r}{\textit{continued on next page}} \\
+\endfoot
+\bottomrule
+\endlastfoot
+\multicolumn{6}{l}{\textbf{$k$=10} (pool=100, 30/30 queries, 0 skipped, 0 clamped, 20 feasible)\tnote{a}} \\
+ & Probe (semantic + overlap) & 18.71 & 11.80 & 7.50 & 223.28 \\
+ & Union combine & 15.16 & 2.78 & 1.81 & 299.21 \\
+ & Union lookup (N/n) & 44.32 & 7.21 & 1.75 & 1159.77 \\
+ & Stage 1 (Dinkelbach)\tnote{b} & 22.14 & 3.37 & 0.76 & 791.79 \\
+ & Scoring (U) & 13.76 & 8.07 & 2.68 & 113.57 \\
+ & Stage 2 (ILP)\tnote{b} & 4.00 & 4.21 & 1.13 & 24.00 \\
+ & End-to-end total & 118.09 & 38.29 & 27.34 & 1298.52 \\
+\midrule
+\multicolumn{6}{l}{\textbf{$k$=20} (pool=200, 30/30 queries, 0 skipped, 0 clamped, 13 feasible)\tnote{a}} \\
+ & Probe (semantic + overlap) & 17.74 & 12.81 & 8.34 & 67.43 \\
+ & Union combine & 23.02 & 2.95 & 1.83 & 812.67 \\
+ & Union lookup (N/n) & 41.32 & 6.93 & 1.75 & 807.36 \\
+ & Stage 1 (Dinkelbach)\tnote{b} & 14.76 & 3.44 & 0.78 & 81.83 \\
+ & Scoring (U) & 26.41 & 15.99 & 6.04 & 248.87 \\
+ & Stage 2 (ILP)\tnote{b} & 4.56 & 1.92 & 1.31 & 38.89 \\
+ & End-to-end total & 127.82 & 49.44 & 34.17 & 1098.00 \\
+\midrule
+\multicolumn{6}{l}{\textbf{$k$=30} (pool=300, 30/30 queries, 0 skipped, 0 clamped, 13 feasible)\tnote{a}} \\
+ & Probe (semantic + overlap) & 16.46 & 11.65 & 7.81 & 65.54 \\
+ & Union combine & 18.40 & 2.82 & 1.83 & 770.82 \\
+ & Union lookup (N/n) & 42.22 & 7.06 & 1.76 & 825.53 \\
+ & Stage 1 (Dinkelbach)\tnote{b} & 15.36 & 3.40 & 0.78 & 83.23 \\
+ & Scoring (U) & 37.64 & 21.95 & 9.78 & 386.31 \\
+ & Stage 2 (ILP)\tnote{b} & 4.22 & 1.92 & 1.37 & 21.02 \\
+ & End-to-end total & 134.31 & 56.56 & 37.74 & 984.13 \\
+\midrule
+\multicolumn{6}{l}{\textbf{$k$=40} (pool=400, 30/30 queries, 0 skipped, 0 clamped, 12 feasible)\tnote{a}} \\
+ & Probe (semantic + overlap) & 18.37 & 12.42 & 7.91 & 132.12 \\
+ & Union combine & 24.52 & 2.95 & 1.82 & 774.89 \\
+ & Union lookup (N/n) & 33.30 & 7.03 & 1.73 & 771.05 \\
+ & Stage 1 (Dinkelbach)\tnote{b} & 22.61 & 3.53 & 0.88 & 809.16 \\
+ & Scoring (U) & 59.92 & 29.37 & 14.29 & 1736.82 \\
+ & Stage 2 (ILP)\tnote{b} & 6.00 & 2.09 & 1.55 & 48.98 \\
+ & End-to-end total & 164.73 & 67.58 & 41.82 & 1801.87 \\
+\midrule
+\multicolumn{6}{l}{\textbf{$k$=50} (pool=500, 30/30 queries, 0 skipped, 1 clamped, 11 feasible)\tnote{a}} \\
+ & Probe (semantic + overlap) & 17.11 & 12.33 & 7.72 & 69.16 \\
+ & Union combine & 27.72 & 2.83 & 1.81 & 812.34 \\
+ & Union lookup (N/n) & 36.41 & 6.90 & 1.72 & 804.49 \\
+ & Stage 1 (Dinkelbach)\tnote{b} & 16.84 & 3.36 & 0.03 & 127.07 \\
+ & Scoring (U) & 58.98 & 35.30 & 17.46 & 510.21 \\
+ & Stage 2 (ILP)\tnote{b} & 7.85 & 2.14 & 1.67 & 139.25 \\
+ & End-to-end total & 164.91 & 75.41 & 45.31 & 1066.85 \\
+\midrule
+\multicolumn{6}{l}{\textbf{$k$=60} (pool=600, 30/30 queries, 0 skipped, 1 clamped, 10 feasible)\tnote{a}} \\
+ & Probe (semantic + overlap) & 16.23 & 11.45 & 7.66 & 65.39 \\
+ & Union combine & 22.56 & 2.73 & 1.80 & 770.52 \\
+ & Union lookup (N/n) & 32.07 & 6.85 & 1.72 & 781.76 \\
+ & Stage 1 (Dinkelbach)\tnote{b} & 16.15 & 3.15 & 0.03 & 101.15 \\
+ & Scoring (U) & 66.41 & 42.10 & 19.30 & 414.98 \\
+ & Stage 2 (ILP)\tnote{b} & 6.51 & 2.19 & 1.83 & 97.97 \\
+ & End-to-end total & 159.93 & 81.97 & 48.90 & 1024.93 \\
+\midrule
+\multicolumn{6}{l}{\textbf{$k$=70} (pool=700, 30/30 queries, 0 skipped, 2 clamped, 10 feasible)\tnote{a}} \\
+ & Probe (semantic + overlap) & 26.70 & 12.28 & 7.66 & 735.60 \\
+ & Union combine & 18.39 & 2.86 & 1.79 & 684.08 \\
+ & Union lookup (N/n) & 28.20 & 7.00 & 1.73 & 136.87 \\
+ & Stage 1 (Dinkelbach)\tnote{b} & 19.30 & 3.37 & 0.03 & 152.26 \\
+ & Scoring (U) & 82.90 & 52.00 & 21.11 & 750.53 \\
+ & Stage 2 (ILP)\tnote{b} & 18.23 & 2.55 & 1.97 & 425.00 \\
+ & End-to-end total & 193.73 & 96.27 & 52.92 & 832.15 \\
+\midrule
+\multicolumn{6}{l}{\textbf{$k$=80} (pool=800, 30/30 queries, 0 skipped, 2 clamped, 10 feasible)\tnote{a}} \\
+ & Probe (semantic + overlap) & 16.94 & 11.87 & 7.62 & 68.97 \\
+ & Union combine & 17.93 & 2.82 & 1.83 & 668.15 \\
+ & Union lookup (N/n) & 32.33 & 6.92 & 1.73 & 698.99 \\
+ & Stage 1 (Dinkelbach)\tnote{b} & 23.84 & 3.29 & 0.03 & 824.96 \\
+ & Scoring (U) & 82.98 & 57.01 & 22.79 & 416.31 \\
+ & Stage 2 (ILP)\tnote{b} & 4.70 & 2.56 & 1.83 & 16.15 \\
+ & End-to-end total & 178.72 & 99.51 & 56.83 & 1054.15 \\
+\midrule
+\multicolumn{6}{l}{\textbf{$k$=90} (pool=900, 30/30 queries, 0 skipped, 2 clamped, 10 feasible)\tnote{a}} \\
+ & Probe (semantic + overlap) & 17.01 & 12.04 & 7.64 & 64.51 \\
+ & Union combine & 13.42 & 2.77 & 1.81 & 84.74 \\
+ & Union lookup (N/n) & 27.62 & 6.93 & 1.71 & 158.55 \\
+ & Stage 1 (Dinkelbach)\tnote{b} & 40.91 & 3.30 & 0.03 & 772.93 \\
+ & Scoring (U) & 91.44 & 64.54 & 23.47 & 515.45 \\
+ & Stage 2 (ILP)\tnote{b} & 9.05 & 2.80 & 1.83 & 135.72 \\
+ & End-to-end total & 199.45 & 111.29 & 61.18 & 1009.39 \\
+\midrule
+\multicolumn{6}{l}{\textbf{$k$=100} (pool=1000, 30/30 queries, 0 skipped, 3 clamped, 9 feasible)\tnote{a}} \\
+ & Probe (semantic + overlap) & 16.85 & 12.12 & 7.80 & 67.98 \\
+ & Union combine & 13.08 & 2.78 & 1.80 & 88.53 \\
+ & Union lookup (N/n) & 27.32 & 6.79 & 1.73 & 142.87 \\
+ & Stage 1 (Dinkelbach)\tnote{b} & 40.85 & 3.30 & 0.03 & 847.05 \\
+ & Scoring (U) & 97.89 & 73.12 & 24.22 & 414.39 \\
+ & Stage 2 (ILP)\tnote{b} & 6.34 & 3.18 & 1.91 & 41.24 \\
+ & End-to-end total & 202.32 & 120.22 & 65.86 & 1079.03 \\
+\midrule
+\multicolumn{6}{l}{\textbf{$k$=639} (pool=6390, 29/30 queries, 1 skipped, 23 clamped, 7 feasible)\tnote{a}} \\
+ & Probe (semantic + overlap) & 17.45 & 12.18 & 7.82 & 70.16 \\
+ & Union combine & 28.83 & 2.81 & 1.96 & 803.31 \\
+ & Union lookup (N/n) & 38.67 & 7.08 & 2.64 & 822.21 \\
+ & Stage 1 (Dinkelbach)\tnote{b} & 30.86 & 0.20 & 0.04 & 210.18 \\
+ & Scoring (U) & 186.70 & 123.29 & 72.63 & 917.03 \\
+ & Stage 2 (ILP)\tnote{b} & 161.41 & 5.75 & 2.38 & 3145.41 \\
+ & End-to-end total & 463.93 & 154.78 & 106.26 & 4172.59 \\
+\midrule
+\end{longtable}
+\begin{minipage}{\linewidth}
+\footnotesize
+\begin{tablenotes}
+\item[a] Per $k$: 5 independent repeats of the SAME query set at that $k$ (query eligibility/skip is $|D_{union}|\geq k$, so which queries are eligible differs by $k$ -- $k$=100 skips 1 more query than $k$=10..90; $k$=639 skips several more, see the skipped counts above). \emph{n\_selected}, \emph{n\_skipped}, \emph{n\_clamped}, and \emph{n\_feasible} are identical across all 5 repeats at a given $k$ (enforced by assertion); only step wall-clock cost is re-measured each repeat, against ONE shared context (semantic HNSW index + overlap posting-list index) built once for tier\_100k and reused across every $k$ and every repeat.
+\item[b] Stage 1/Stage 2 solve times are heavily right-skewed per query (most queries solve in low single-digit ms; a few take far longer), so Mean/Median/Min/Max are all computed by pooling every query's timing across all 5 repeats into one sample per $k$ -- the same repeated-and-pooled methodology used in and explained fully by \texttt{wdc\_step\_timing\_deepdive.tex} (right-skew instability + the HNSW add\_items() construction non-determinism found there); not repeated in full here to avoid duplicating that explanation across 11 $k$ values.
+\end{tablenotes}
+\end{minipage}

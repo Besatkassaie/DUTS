@@ -1,0 +1,10 @@
+bench,q_table,n_D,F_max_k,class
+santos3,biodiversity_a_fair.csv,2,,D<k
+santos3,data_mill_a_fair.csv,6,,D<k
+santos3,data_mill_b_fair.csv,8,,D<k
+santos3,mines_b_fair.csv,10,0.072265740031804,no_solution_in_D
+santos3,minister_meetings_a_fair.csv,8,,D<k
+santos3,monthly_data_feed_b_fair.csv,23,0.20133171368155847,no_solution_in_D
+santos3,senior_officials_expenses_a_fair.csv,2,,D<k
+santos3,stockport_contracts_a_fair.csv,2,,D<k
+santos3,wholesale_markets_a_fair.csv,2,,D<k
