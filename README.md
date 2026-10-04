@@ -43,9 +43,32 @@ If neither is set, the prerequisite check reports "Starmie checkout" as missing.
 
 ### 3. Benchmarks
 
-> **TODO:** where to download the benchmarks (`santos3`, `tusSmall3`, `tusLarge3`) —
-> `<BENCHMARK_DOWNLOAD_URL>` — and whether the download includes the precomputed embeddings
-> (`vectors/`) and synopses (`indexes/metadata_combined.pkl`).
+All benchmarks of the paper's Table 2 — with their query lists, ground truth, precomputed
+embeddings and value-distribution synopses — are on Zenodo:
+**https://zenodo.org/records/23140306**
+
+| Experiment | Benchmark (paper) | # Queries | # Tables | Zenodo archive(s) | Dataset name here |
+|---|---|---:|---:|---|---|
+| Effectiveness | Santo-Small | 48 | 999 | `santos3.tar.zst` | `santos3` |
+| Effectiveness | TUS-Small | 92 | 9,178 | `tusSmall3.tar.zst.part*` | `tusSmall3` |
+| Effectiveness | TUS-Large | 142 | 18,309 | `tusLarge3.tar.zst.part*` | `tusLarge3` |
+| Scalability | Santos-Large | 46 | 11,086 | `santosLarge.tar.zst.part*` | `santosLarge` |
+| Scalability | WDC-10K / 100K / 1M | 67 | 10K / 100K / 1M | `wdc_tiers.tar.zst`, `wdc_vectors.tar.zst.part*`, `wdc_indexes.tar.zst`, `wdc_queries.tar.zst` | — |
+
+Archives over 1 GB are split into parts; join, check and extract them inside your Starmie checkout so
+the data lands in `$STARMIE_FAIR_ROOT/data/`, where `main.py` looks by default:
+
+```bash
+cd $STARMIE_FAIR_ROOT
+cat tusSmall3.tar.zst.part* > tusSmall3.tar.zst     # split archives only
+md5sum -c --ignore-missing MD5SUMS                   # optional integrity check
+tar --zstd -xf tusSmall3.tar.zst                     # -> data/tusSmall3/, data/protected_attributes_tusSmall3.csv
+```
+
+`main.py` runs the three effectiveness benchmarks (`santos3`, `tusSmall3`, `tusLarge3`). The
+Santos-Large and WDC data (with the 46- and 67-query workloads) is provided for the scalability
+experiments, which use the scripts under `experiments/` rather than `main.py`. The Zenodo record's
+README describes every archive in detail.
 
 Each dataset is a directory laid out as:
 
@@ -64,9 +87,9 @@ to it, with columns `q_name, protected_attribute_id, protected_value`. If the da
 
 ### 4. Model checkpoint (only to generate embeddings)
 
-> **TODO:** where to get the trained Starmie checkpoint used for the reported results —
-> `<CHECKPOINT_URL>` (`model_drop_col_tfidf_entity_column_0.pt`, trained on santos) — or how to
-> train one with Starmie's `run_pretrain.py`.
+The Starmie checkpoint that produced every embedding in the Zenodo archives is in the same record:
+`starmie_santos_model_drop_col_tfidf_entity_column_0.pt` (fine-tuned on Santos). You need it only
+to regenerate embeddings, since the archives already include them.
 
 When embeddings are missing, the program asks for this file (or pass `--checkpoint`). If it is at
 `$STARMIE_FAIR_ROOT/results/santos/model_drop_col_tfidf_entity_column_0.pt` it is suggested
