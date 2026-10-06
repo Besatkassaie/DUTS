@@ -2,9 +2,7 @@
 
 Code for *Distribution-Aware Unionable Table Search* (Besat Kassaie and Renée J. Miller, EDBT 2027).
 
-**Technical report:**
-[docs/DUTS_TechnicalReport.pdf](docs/DUTS_TechnicalReport.pdf) —
-permanent link: https://github.com/Besatkassaie/DUTS/blob/EDBT27/docs/DUTS_TechnicalReport.pdf
+Technical report: https://github.com/Besatkassaie/DUTS/blob/EDBT27/docs/DUTS_TechnicalReport.pdf
 
 ## About
 
