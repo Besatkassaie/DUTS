@@ -18,7 +18,7 @@ import json
 import multiprocessing as mp
 import os
 import sys
-from typing import NamedTuple, Sequence
+from typing import NamedTuple, Optional, Sequence
 
 import numpy as np
 
@@ -43,7 +43,8 @@ class Settings(NamedTuple):
     datalake_dir: str
     metadata_dir: str          # must contain metadata_combined.pkl
     groundtruth_csv: str
-    scratch_dir: str           # HNSWSearcher_Fair writes its index here (one subdirectory per worker)
+    scratch_dir: Optional[str]  # HNSWSearcher_Fair writes its index here (one subdirectory per
+                                # worker); None = keep it in memory only
     ks: Sequence[int] = KS
     n: int = N
     sigma: float = SIGMA
@@ -91,11 +92,14 @@ def _init(st: Settings):
     from dutsx.adapters.unionability import load_starmie_vectors
     from experiments.groundtruth import load_groundtruth
     import pickle
-    scratch = os.path.join(st.scratch_dir, "%s_%d" % (st.bench, os.getpid()))
-    os.makedirs(scratch, exist_ok=True)
+    index_path = None
+    if st.scratch_dir:
+        scratch = os.path.join(st.scratch_dir, "%s_%d" % (st.bench, os.getpid()))
+        os.makedirs(scratch, exist_ok=True)
+        index_path = os.path.join(scratch, "hnsw.bin")
     with contextlib.redirect_stdout(io.StringIO()):
         s = HNSWSearcher_Fair(
-            st.datalake_vec_pkl, os.path.join(scratch, "hnsw.bin"), st.query_dir, st.datalake_dir, 1.0,
+            st.datalake_vec_pkl, index_path, st.query_dir, st.datalake_dir, 1.0,
             random_seed=42, load_metadata=True, metadata_dir=st.metadata_dir,
             delta=st.delta, target_fairness=st.f_star)
     q_vecs = load_starmie_vectors(st.query_vec_pkl)

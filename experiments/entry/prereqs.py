@@ -19,7 +19,10 @@ from typing import Any, Callable, Dict, List, NamedTuple, Optional
 
 import numpy as np
 
-from .config import VEC_DATALAKE, VEC_QUERY, Prompter
+from .config import BUNDLED_STARMIE, REPO_ROOT, VEC_DATALAKE, VEC_QUERY, Prompter
+
+CHECKPOINT_NAMES = ("starmie_santos_model_drop_col_tfidf_entity_column_0.pt",   # name in the Zenodo record
+                    "model_drop_col_tfidf_entity_column_0.pt")
 
 
 class Requirement(NamedTuple):
@@ -66,16 +69,15 @@ def check(v: Dict[str, Any], hnsw_m: int = 32) -> List[Requirement]:
     """Every requirement for ``v['system']``, satisfied or not, in the order they are reported."""
     system = v["system"]
     reqs: List[Requirement] = []
-    root = v["starmie_root"]
-
     starmie_files = ["TableMetadata.py"]
     if system != "duts":
-        starmie_files += ["HNSWSearcher_Fair.py", "bounds.py", "utility.py"]
-    missing = [f for f in starmie_files if not os.path.isfile(os.path.join(root, f))]
+        starmie_files += ["HNSWSearcher_Fair.py", "bounds.py", "utility.py", "exhaustive_swap.py",
+                          "nl_swap.py", "preference.py", "Custom_Heap.py"]
+    missing = [f for f in starmie_files if not os.path.isfile(os.path.join(BUNDLED_STARMIE, f))]
     reqs.append(Requirement(
-        "starmie_root", "Starmie checkout", not missing,
-        root if not missing else "{} lacks {}".format(root, ", ".join(missing)), True,
-        "pass --starmie-root (or set STARMIE_FAIR_ROOT) to a Starmie checkout"))
+        "starmie_bundle", "bundled Starmie modules", not missing,
+        BUNDLED_STARMIE if not missing else "{} lacks {}".format(BUNDLED_STARMIE, ", ".join(missing)),
+        True, "the repository checkout is incomplete; re-clone it"))
 
     for key, label, d in (("datalake", "datalake tables", datalake_dir(v)),
                           ("query", "query tables", query_dir(v))):
@@ -155,7 +157,7 @@ class StaleIndexError(Exception):
 def load_synopsis(v: Dict[str, Any]):
     from dutsx import registry
     return registry.build("synopsis", "metadata_store", pkl_path=v["metadata_path"],
-                          theta_cat=v.get("theta_cat"), starmie_fair_root=v["starmie_root"])
+                          theta_cat=v.get("theta_cat"), starmie_fair_root=BUNDLED_STARMIE)
 
 
 def indexed_tables(v: Dict[str, Any], synopsis, dl_vecs) -> List[str]:
@@ -176,6 +178,7 @@ class BuildParams(NamedTuple):
     hnsw_ef_construction: int
     checkpoint: Optional[str]
     embed_batch_size: int
+    starmie_root: Optional[str] = None     # public Starmie checkout providing sdd/
 
 
 def collect_build_params(missing: List[Requirement], v: Dict[str, Any], args, prompter: Prompter) -> BuildParams:
@@ -190,19 +193,29 @@ def collect_build_params(missing: List[Requirement], v: Dict[str, Any], args, pr
         if args.hnsw_ef_construction is None:
             efc = prompter.ask("HNSW ef_construction", 200, int, flag="--hnsw-ef-construction")
     checkpoint, batch = args.checkpoint, args.embed_batch_size or 1024
+    starmie_root = v.get("starmie_root")
     if "embeddings" in keys:
         if prompter.interactive:
-            print("\nGenerating embeddings needs a trained Starmie model checkpoint:")
-        guess = os.path.join(v["starmie_root"], "results", "santos", "model_drop_col_tfidf_entity_column_0.pt")
+            print("\nGenerating embeddings needs the public Starmie code (its sdd/ package, from "
+                  "https://github.com/megagonlabs/starmie) and a trained Starmie model checkpoint:")
+        if not (starmie_root and os.path.isdir(os.path.join(starmie_root, "sdd"))):
+            starmie_root = prompter.ask("public Starmie checkout (contains sdd/)", starmie_root,
+                                        flag="--starmie-root")
+            starmie_root = os.path.abspath(os.path.expanduser(starmie_root))
+            if not os.path.isdir(os.path.join(starmie_root, "sdd")):
+                raise FileNotFoundError("no sdd/ package in {} (git clone "
+                                        "https://github.com/megagonlabs/starmie)".format(starmie_root))
+        guesses = [os.path.join(d, n) for d in (REPO_ROOT, v["data_root"]) for n in CHECKPOINT_NAMES]
+        guesses.append(os.path.join(starmie_root, "results", "santos", CHECKPOINT_NAMES[1]))
+        guess = next((g for g in guesses if os.path.isfile(g)), None)
         if checkpoint is None:
-            checkpoint = prompter.ask("checkpoint (.pt)", guess if os.path.isfile(guess) else None,
-                                      flag="--checkpoint")
+            checkpoint = prompter.ask("checkpoint (.pt)", guess, flag="--checkpoint")
         checkpoint = os.path.abspath(os.path.expanduser(checkpoint))
         if not os.path.isfile(checkpoint):
             raise FileNotFoundError("checkpoint not found: {}".format(checkpoint))
         if args.embed_batch_size is None:
             batch = prompter.ask("tables per inference batch", 1024, int, flag="--embed-batch-size")
-    return BuildParams(m, efc, checkpoint, batch)
+    return BuildParams(m, efc, checkpoint, batch, starmie_root)
 
 
 def build(missing: List[Requirement], v: Dict[str, Any], bp: BuildParams,
@@ -212,10 +225,10 @@ def build(missing: List[Requirement], v: Dict[str, Any], bp: BuildParams,
     written: List[str] = []
     if "embeddings" in keys:
         written += generate_embeddings(datalake_dir(v), query_dir(v), v["embedding_path"],
-                                       bp.checkpoint, v["starmie_root"], bp.embed_batch_size, log)
+                                       bp.checkpoint, bp.starmie_root, bp.embed_batch_size, log)
     if "metadata" in keys:
         written.append(build_metadata(datalake_dir(v), query_dir(v), v["metadata_path"],
-                                      v["starmie_root"], log))
+                                      BUNDLED_STARMIE, log))
     if "duts_index" in keys:
         written += build_duts_index(v, bp.hnsw_m, bp.hnsw_ef_construction, log)
     return written

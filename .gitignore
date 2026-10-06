@@ -16,3 +16,9 @@ experiments/results/_baseline_scratch/
 artifacts/
 # main.py run outputs (default --output-dir)
 experiments/results/main/
+
+# Benchmark data extracted from the Zenodo record (README: Setup 3)
+/data/
+/wdc_data/
+*.tar.zst
+*.tar.zst.part*

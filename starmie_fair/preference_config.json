@@ -1,0 +1,53 @@
+{
+  "description": "T1 preferred over T2 if any of these hold (all from T1's perspective). NL is correct for any preference relation; BNL requires strict partial order.",
+  "rules_explained": [
+    "Rule 1: p1>p2 AND np1<np2 AND union(T1)>=union(T2) => T1 better",
+    "Rule 3: p1=p2 AND np1=np2 AND union(T1)>union(T2) => T1 better",
+    "Rule 4: p1=p2 AND np1>np2 AND union(T2)>union(T1) => T2 better (from T1's view: T1 dominated)",
+    "Rule 5: p1>p2 AND np1=np2 AND union(T1)>union(T2) => T1 better"
+  ],
+  "preference": {
+    "or": [
+      {
+        "_comment": "Rule 1: more protected, fewer non-protected, at least as good unionability",
+        "and": [
+          { "left": "protected_count", "op": ">", "right": "protected_count" },
+          { "left": "non_protected_count", "op": "<", "right": "non_protected_count" },
+          { "left": "unionability_score", "op": ">=", "right": "unionability_score" }
+        ]
+      },
+      
+      {
+        "_comment": "Rule 3: same protected, same non-protected, strictly better unionability",
+        "and": [
+          { "left": "protected_count", "op": "==", "right": "protected_count" },
+          { "left": "non_protected_count", "op": "==", "right": "non_protected_count" },
+          { "left": "unionability_score", "op": ">", "right": "unionability_score" }
+        ]
+      },
+      {
+        "_comment": "Rule 4: same protected, more non-protected, worse unionability => T2 better, so from T1's view: T1 is NOT preferred. Written reversed: T1 has fewer np AND better union means T1 preferred.",
+        "and": [
+          { "left": "protected_count", "op": "==", "right": "protected_count" },
+          { "left": "non_protected_count", "op": "<", "right": "non_protected_count" },
+          { "left": "unionability_score", "op": ">=", "right": "unionability_score" }
+        ]
+      },
+      {
+        "_comment": "Rule 5: more protected, same non-protected, strictly better unionability",
+        "and": [
+          { "left": "protected_count", "op": ">", "right": "protected_count" },
+          { "left": "non_protected_count", "op": "==", "right": "non_protected_count" },
+          { "left": "unionability_score", "op": ">", "right": "unionability_score" }
+        ]
+      }
+    ]
+  },
+  "available_attributes": [
+    "unionability_score",
+    "protected_count",
+    "non_protected_count",
+    "total_records",
+    "protected_proportion"
+  ]
+}
