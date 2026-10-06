@@ -1,8 +1,45 @@
 # DUTS — Distribution-Aware Unionable Table Search
 
-Code for *Distribution-Aware Unionable Table Search* (Kassaie & Miller). `duts/` is the two-stage
-optimization core (Stage 1: Dinkelbach pool selection; Stage 2: exact 0–1 ILP via HiGHS),
-`dutsx/` the retrieval / synopsis / unionability adapters, `experiments/` the experiment harness.
+Code for *Distribution-Aware Unionable Table Search* (Besat Kassaie and Renée J. Miller, EDBT 2027).
+
+## About
+
+Unionable table search finds data-lake tables that can be unioned with a query table to add more
+tuples. Many uses also need the combined data to have a particular distribution — for example, a
+target class balance in a training set, or enough representation of a demographic group. A set of
+highly unionable tables can fail that requirement even when every table looks reasonable on its own,
+because what matters is the distribution of their union with the query.
+
+**Distribution-Aware Unionable Table Search (DUTS)**: given a query table, a categorical
+*distribution attribute* `d` of it, a set of target values `V` and a minimum proportion `τ`, find
+`k` data-lake tables that maximize unionability with the query such that, in the union of the query
+and the `k` tables, at least a fraction `τ` of the tuples have a `d`-value in `V`. The problem is
+NP-hard.
+
+The paper compares two approaches:
+
+- **DUTS-2OptS (distribution-first)** — retrieve candidate attributes that are semantically similar
+  to `d` (HNSW over attribute embeddings) and contain a target value (inverted index); **OptStage 1**
+  picks a pool of `α·k` candidates that maximizes the achievable proportion, solved exactly as a 0–1
+  fractional program with Dinkelbach's method; unionability is computed for that pool only;
+  **OptStage 2** picks the final `k` tables maximizing unionability subject to the proportion
+  constraint, an exact 0–1 integer linear program.
+- **Swap-based repair (unionability-first)** — take the most unionable tables from a standard search
+  (Starmie) and greedily swap tables to satisfy the constraint (Greedy-Swap), optionally pruning
+  dominated candidates first (Preference-Swap).
+
+Across the benchmarks, the distribution-first approach finds feasible results for more queries while
+keeping high unionability, and scales to data lakes with a million tables.
+
+![DUTS-2OptS pipeline](docs/figures/duts_pipeline.png)
+<!-- TODO: add the pipeline figure (Figure 2 of the paper) as docs/figures/duts_pipeline.png -->
+
+## Repository layout
+
+`duts/` is the two-stage optimization core (OptStage 1: Dinkelbach pool selection; OptStage 2:
+exact 0–1 ILP via HiGHS), `dutsx/` the retrieval / synopsis / unionability adapters, `starmie_fair/`
+the Starmie extensions the baselines and synopses use, `experiments/` the experiment harness, and
+`main.py` the single entry point for running experiments.
 
 ## Setup
 
