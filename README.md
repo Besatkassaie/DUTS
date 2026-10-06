@@ -2,6 +2,10 @@
 
 Code for *Distribution-Aware Unionable Table Search* (Besat Kassaie and Renée J. Miller, EDBT 2027).
 
+**Technical report:**
+[docs/DUTS_TechnicalReport.pdf](docs/DUTS_TechnicalReport.pdf) —
+permanent link: https://github.com/Besatkassaie/DUTS/blob/EDBT27/docs/DUTS_TechnicalReport.pdf
+
 ## About
 
 Unionable table search finds data-lake tables that can be unioned with a query table to add more
