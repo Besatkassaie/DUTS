@@ -29,7 +29,8 @@ def summarize(out: RunOutput, total_s: float) -> Dict[str, Any]:
     n = len(o)
     feas = [q for q in o if q.feasible]
     returned = [q for q in o if q.n_returned > 0]
-    query_s = sum(q.runtime_s for q in o)
+    # With several workers, per-query times overlap; use the wall-clock time of the query phase.
+    query_s = out.details.get("query_wall_s", sum(q.runtime_s for q in o))
     causes: Dict[str, int] = {}
     for q in o:
         if not q.feasible:
@@ -157,8 +158,6 @@ def collect_environment(v: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         "packages": {p: _pkg_version(p) for p in PACKAGES},
         "duts_git": _git_rev(REPO_ROOT),
     }
-    if v and v.get("starmie_root"):
-        env["starmie_git"] = _git_rev(v["starmie_root"])
     scipy_v = env["packages"].get("scipy")
     env["milp_solver"] = "HiGHS via scipy.optimize.milp (bundled with SciPy {})".format(scipy_v) if scipy_v else None
     env["ann_library"] = "hnswlib {}".format(env["packages"].get("hnswlib"))
@@ -193,8 +192,6 @@ def print_environment(env: Dict[str, Any]) -> None:
     print("  conda env         {}".format(env["conda_env"]))
     print("  platform          {}  [{}; {} CPUs]".format(env["platform"], env["machine"], env["cpu_count"]))
     print("  DUTS revision     {}".format(env.get("duts_git") or "n/a (not a git checkout)"))
-    if "starmie_git" in env:
-        print("  Starmie revision  {}".format(env["starmie_git"] or "n/a (not a git checkout)"))
     print("  packages")
     for name, ver in env["packages"].items():
         print("    {:<16}{}".format(name, ver or "not installed"))

@@ -7,8 +7,7 @@
   cannot be generated is reported as fatal; missing derived artifacts (synopsis, HNSW index) are
   built on request and the run then succeeds and reports results. Embeddings are written directly
   (random, with planted neighbours) -- generating them needs a trained Starmie checkpoint, which is
-  exercised by hand, not here. Needs starmie_fair's ``TableMetadata`` (for the synopsis), so these
-  skip when that checkout is absent, like the other ``test_dutsx_*`` real-data tests.
+  exercised by hand, not here. Uses the bundled ``starmie_fair/TableMetadata.py`` for the synopsis.
 """
 import csv
 import io
@@ -24,8 +23,8 @@ from experiments.entry import config, prereqs, report
 from experiments.entry.app import EXIT_BUILT, EXIT_CONFIG, EXIT_MISSING, EXIT_OK, ExperimentApp
 from experiments.entry.systems import QueryOutcome, RunOutput
 
-STARMIE_OK = os.path.isfile(os.path.join(config.DEFAULT_STARMIE_ROOT, "TableMetadata.py"))
-needs_starmie = pytest.mark.skipif(not STARMIE_OK, reason="starmie_fair checkout not available")
+STARMIE_OK = os.path.isfile(os.path.join(config.BUNDLED_STARMIE, "TableMetadata.py"))
+needs_starmie = pytest.mark.skipif(not STARMIE_OK, reason="bundled starmie_fair/ modules missing")
 
 
 # -- configuration -------------------------------------------------------------------------
@@ -47,13 +46,28 @@ def test_interactive_prompts_fill_missing_core_and_method_params(tmp_path):
         "",                             # embedding_path: accept suggestion
         "7", "", "", "", "x", "3", "", "",   # k=7, defaults..., alpha: bad float re-asked then 3
     ]) + "\n"
-    v = _collect(["--starmie-root", str(tmp_path)], answers)
+    v = _collect(["--data-root", str(tmp_path)], answers)
     assert v["system"] == "duts" and v["dataset"] == "mydata"
     assert v["dataset_path"] == str(tmp_path / "data")
     assert v["embedding_path"] == str(tmp_path / "data" / "vectors")
     assert v["index_path"].endswith(os.path.join("artifacts", "mydata", "index"))
     assert v["k"] == 7 and v["alpha"] == 3.0 and v["f_star"] == 0.4
     assert "n_columns" not in v       # baseline-only parameter, never asked for duts
+
+
+def test_dataset_path_defaults_to_data_root(tmp_path):
+    v = _collect(["--system", "duts", "--dataset", "santos3", "--data-root", str(tmp_path),
+                  "--index-path", str(tmp_path / "i")])
+    assert v["dataset_path"] == str(tmp_path / "santos3")
+    assert v["embedding_path"] == str(tmp_path / "santos3" / "vectors")
+    assert v["protected_csv"] == str(tmp_path / "protected_attributes_santos3.csv")
+    assert v["starmie_root"] is None      # public Starmie is optional (embeddings only)
+
+
+def test_bundled_starmie_modules_present():
+    for f in ("TableMetadata.py", "HNSWSearcher_Fair.py", "bounds.py", "utility.py", "exhaustive_swap.py",
+              "nl_swap.py", "bnl_swap.py", "preference.py", "Custom_Heap.py", "preference_config.json"):
+        assert os.path.isfile(os.path.join(config.BUNDLED_STARMIE, f)), f
 
 
 def test_non_interactive_missing_core_param_is_an_error():

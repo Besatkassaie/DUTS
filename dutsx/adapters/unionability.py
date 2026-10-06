@@ -31,8 +31,9 @@ threshold``; §6.2 says "at least the threshold sigma" (``>=``). This module
 keeps ``>`` deliberately, for comparability with Starmie's published numbers.
 The discrepancy is noted rather than silently resolved -- see PLAN-full.md M3.
 """
+import os
 import pickle
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 
 import numpy as np
 from scipy.optimize import linear_sum_assignment
@@ -180,12 +181,14 @@ class StarmieVerifyScorer(object):
         query_vectors: Dict[str, np.ndarray],
         candidate_vectors: Dict[str, np.ndarray],
         threshold: float = DEFAULT_THRESHOLD,
-        starmie_root: str = "/u6/bkassaie/starmie_fair",
+        starmie_root: Optional[str] = None,
     ) -> None:
         self.query_vectors = query_vectors
         self.candidate_vectors = candidate_vectors
         self.threshold = threshold
-        self.starmie_root = starmie_root
+        # default: the Starmie modules bundled in <repo>/starmie_fair (bounds.verify_constrained)
+        self.starmie_root = starmie_root or os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "starmie_fair")
         self.n_scored = 0
 
     def _verify_constrained(self):

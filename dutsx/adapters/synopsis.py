@@ -76,16 +76,17 @@ import pandas as pd
 
 from ..ports import AttrRef
 
-DEFAULT_STARMIE_FAIR_ROOT = "/u6/bkassaie/starmie_fair"
+# The fairness-aware Starmie modules bundled with this repository (TableMetadata, ...).
+DEFAULT_STARMIE_FAIR_ROOT = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "starmie_fair")
 
 
 def _ensure_starmie_fair_on_path(root: Optional[str] = None) -> str:
-    """Put starmie_fair on ``sys.path`` so ``TableMetadata`` is importable.
+    """Put the Starmie modules on ``sys.path`` so ``TableMetadata`` is importable.
 
-    starmie_fair (``/u6/bkassaie/starmie_fair``) is read-only upstream data,
-    not an installed package (CLAUDE.md) -- this mirrors the
-    ``sys.path.insert`` pattern starmie_fair's own scripts use (e.g.
-    ``fair_hnsw_eval/fair_starmie_search.py``).
+    Defaults to the copy bundled in ``<repo>/starmie_fair``; ``root`` or ``$STARMIE_FAIR_ROOT``
+    point elsewhere. The modules are not an installed package -- this mirrors the
+    ``sys.path.insert`` pattern Starmie's own scripts use.
     """
     import sys
 

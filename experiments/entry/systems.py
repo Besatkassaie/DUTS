@@ -124,21 +124,23 @@ def run_baseline(v: Dict[str, Any], log=print) -> RunOutput:
     import pickle
 
     from experiments.baselines import run_starmie_baselines as rsb
-    from .config import METADATA_FILE, SYSTEMS
+    from .config import BUNDLED_STARMIE, METADATA_FILE, SYSTEMS
 
     approach = SYSTEMS[v["system"]].starmie_approach
-    scratch = tempfile.mkdtemp(prefix="duts_baseline_")
+    scratch = None
     metadata_dir = os.path.dirname(v["metadata_path"])
     if os.path.basename(v["metadata_path"]) != METADATA_FILE:
-        # HNSWSearcher_Fair only looks for <metadata_dir>/metadata_combined.pkl
+        # HNSWSearcher_Fair only looks for <metadata_dir>/metadata_combined.pkl (a symlink, no copy)
+        scratch = tempfile.mkdtemp(prefix="duts_baseline_")
         metadata_dir = os.path.join(scratch, "metadata")
         os.makedirs(metadata_dir)
         os.symlink(v["metadata_path"], os.path.join(metadata_dir, METADATA_FILE))
+    # scratch_dir=None: Starmie's HNSW index is kept in memory only, never written to disk.
     st = rsb.Settings(
-        bench=v["dataset"], approach=approach, starmie_root=v["starmie_root"],
+        bench=v["dataset"], approach=approach, starmie_root=BUNDLED_STARMIE,
         datalake_vec_pkl=datalake_vec_pkl(v), query_vec_pkl=query_vec_pkl(v),
         query_dir=query_dir(v), datalake_dir=os.path.join(v["dataset_path"], "datalake"),
-        metadata_dir=metadata_dir, groundtruth_csv=v["groundtruth_csv"], scratch_dir=scratch,
+        metadata_dir=metadata_dir, groundtruth_csv=v["groundtruth_csv"], scratch_dir=None,
         ks=(v["k"],), n=v["n_columns"], sigma=v["sigma"], f_star=v["f_star"], delta=v["delta"])
 
     qs, n_rows = [], 0
@@ -157,26 +159,32 @@ def run_baseline(v: Dict[str, Any], log=print) -> RunOutput:
     t0 = time.perf_counter()
     rows: List[Tuple[dict, float]] = []
     try:
+        # As in the paper's runs: each worker builds its own Starmie searcher (HNSW index). The index
+        # is kept in memory only (scratch_dir=None), so nothing is written to disk per worker.
+        t_q = t0
         if v["workers"] == 1:
             log("building Starmie's HNSW index in memory ...")
             _init_quiet(st)
             setup_s = time.perf_counter() - t0
             log("setup {:.1f}s; {} queries ({} skipped)".format(setup_s, len(qs), n_skipped))
+            t_q = time.perf_counter()
             for i, q in enumerate(qs, 1):
                 rows.append(_timed_one(q))
                 if i % 10 == 0 or i == len(qs):
                     log("  {}/{} queries".format(i, len(qs)))
         else:
-            log("starting {} workers (each builds Starmie's HNSW index) ...".format(v["workers"]))
+            log("starting {} workers (each builds Starmie's HNSW index in memory) ...".format(v["workers"]))
             setup_s = 0.0   # per-worker setup overlaps with queries; it is inside total runtime
             with mp.get_context("fork").Pool(v["workers"], initializer=_init_quiet, initargs=(st,)) as pool:
                 for i, r in enumerate(pool.imap(_timed_one, qs), 1):
                     rows.append(r)
                     if i % 10 == 0 or i == len(qs):
                         log("  {}/{} queries".format(i, len(qs)))
+        query_wall_s = time.perf_counter() - t_q
     finally:
-        os.chdir(cwd)     # _init chdirs into the Starmie checkout
-        shutil.rmtree(scratch, ignore_errors=True)
+        os.chdir(cwd)     # _init chdirs into the Starmie module directory
+        if scratch:
+            shutil.rmtree(scratch, ignore_errors=True)
 
     outcomes = []
     for (row, runtime), q in zip(rows, qs):
@@ -185,7 +193,8 @@ def run_baseline(v: Dict[str, Any], log=print) -> RunOutput:
             row["q_table"], bool(row["feasible"]), len(names), row["prec"], row["rec"], row["ideal_recall"],
             row["gt_size"], row["F"] if row["feasible"] else None, row["duts_sum_U"] if names else None,
             runtime, None if row["feasible"] else _baseline_cause(row, v["k"]), row["tables"]))
-    return RunOutput(outcomes, n_skipped, setup_s, {"approach": approach, "workers": v["workers"]})
+    return RunOutput(outcomes, n_skipped, setup_s, {"approach": approach, "workers": v["workers"],
+                                                    "query_wall_s": query_wall_s})
 
 
 def _init_quiet(st) -> None:

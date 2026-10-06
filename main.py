@@ -2,9 +2,9 @@
 
     python main.py                                   # prompts for everything it needs
     python main.py --system duts --dataset santos3 \
-        --dataset-path /path/to/data/santos3 \
+        --dataset-path data/santos3 \
         --index-path artifacts/santos3/index \
-        --embedding-path /path/to/data/santos3/vectors --defaults
+        --embedding-path data/santos3/vectors --defaults
     python main.py --help                            # every option
 
 Missing prerequisites (embeddings, value-distribution synopsis, HNSW index) are detected and,

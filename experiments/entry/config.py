@@ -19,7 +19,12 @@ import sys
 from typing import Any, Callable, Dict, List, NamedTuple, Optional, Sequence
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-DEFAULT_STARMIE_ROOT = os.environ.get("STARMIE_FAIR_ROOT", "/u6/bkassaie/starmie_fair")
+# Fairness-aware Starmie modules (TableMetadata, HNSWSearcher_Fair, swap repair) bundled with DUTS.
+BUNDLED_STARMIE = os.path.join(REPO_ROOT, "starmie_fair")
+# Where the benchmark archives are extracted: <data root>/<dataset>/{datalake,query,vectors,indexes}.
+DEFAULT_DATA_ROOT = os.environ.get("DUTS_DATA_ROOT", os.path.join(REPO_ROOT, "data"))
+# Public Starmie checkout (its sdd/ package); needed only to regenerate embeddings.
+DEFAULT_STARMIE_ROOT = os.environ.get("STARMIE_ROOT")
 
 # Starmie's column-vector file names (cl_<side>_<augment>_<sample>_<order>_<run_id>.pkl).
 VEC_DATALAKE = "cl_datalake_drop_col_tfidf_entity_column_0.pkl"
@@ -34,14 +39,14 @@ class System(NamedTuple):
 
 
 SYSTEMS: Dict[str, System] = {s.name: s for s in (
-    System("duts", "DUTS: retrieval -> Stage 1 (Dinkelbach) -> unionability on the pool -> Stage 2 (ILP)", None),
-    System("starmie", "Starmie top-k (unconstrained bipartite matching, no fairness constraint)", "starmie"),
-    System("starmie_exhaustive", "Starmie + exhaustive swap fairification", "exhaustive"),
-    System("starmie_nl", "Starmie + NL swap fairification (winnow/dominance pruning)", "nl"),
+    System("duts", "DUTS-2OptS: retrieval -> Stage 1 (Dinkelbach) -> unionability on the pool -> Stage 2 (ILP)", None),
+    System("starmie", "Table 3 Baseline: Starmie top-k, no distribution constraint", "starmie"),
+    System("starmie_exhaustive", "Greedy-Swap: Starmie + swap-based repair (Algorithm 1, flt=false)", "exhaustive"),
+    System("starmie_nl", "Preference-Swap: Starmie + swap repair with winnow filtering (flt=true)", "nl"),
 )}
 BASELINES = tuple(n for n, s in SYSTEMS.items() if s.starmie_approach)
 
-# Benchmarks laid out as <starmie_root>/data/<name>/{datalake,query,vectors,indexes}. Any other
+# Benchmarks laid out as <data root>/<name>/{datalake,query,vectors,indexes}. Any other
 # directory with the same layout works too; these only drive the suggested default path.
 KNOWN_DATASETS = ("santos3", "tusSmall3", "tusLarge3", "santos", "santos2", "santos4")
 
@@ -67,7 +72,7 @@ class Param(NamedTuple):
 def _default_dataset_path(c):
     if not c.get("dataset"):
         return None
-    return os.path.join(c["starmie_root"], "data", c["dataset"])
+    return os.path.join(c["data_root"], c["dataset"])
 
 
 def _default_embedding_path(c):
@@ -131,8 +136,10 @@ PARAMS: List[Param] = [
     Param("workers", "worker processes for the baseline (1 = in-process)", "method", int, 1,
           systems=BASELINES),
     # -- derived ---------------------------------------------------------------------------
-    Param("starmie_root", "Starmie checkout (TableMetadata, HNSWSearcher_Fair, sdd/)", "derived",
-          default=DEFAULT_STARMIE_ROOT, is_path=True),
+    Param("data_root", "directory the benchmark archives were extracted into (default: <repo>/data)",
+          "derived", default=DEFAULT_DATA_ROOT, is_path=True),
+    Param("starmie_root", "public Starmie checkout (its sdd/ package); only to regenerate embeddings",
+          "derived", default=DEFAULT_STARMIE_ROOT, is_path=True),
     Param("metadata_path", "value-distribution synopsis (Starmie MetadataStore pickle)", "derived",
           default=_default_metadata_path, is_path=True),
     Param("protected_csv", "query list: q_name, protected_attribute_id, protected_value", "derived",
@@ -244,10 +251,10 @@ def collect(args: argparse.Namespace, prompter: Prompter, use_defaults: bool) ->
     """Merge command-line values, prompts and derived defaults into one flat dict. Order
     matters: derived defaults (e.g. ``embedding_path``) read earlier values."""
     values: Dict[str, Any] = {}
-    # starmie_root first: dataset_path's suggestion depends on it.
-    values["starmie_root"] = args.starmie_root or DEFAULT_STARMIE_ROOT
+    # data_root first: dataset_path's suggestion depends on it.
+    values["data_root"] = args.data_root or DEFAULT_DATA_ROOT
     for p in PARAMS:
-        if p.name == "starmie_root":
+        if p.name == "data_root":
             continue
         given = getattr(args, p.name)
         if given is not None:
