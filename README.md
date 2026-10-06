@@ -31,8 +31,10 @@ The paper compares two approaches:
 Across the benchmarks, the distribution-first approach finds feasible results for more queries while
 keeping high unionability, and scales to data lakes with a million tables.
 
-![DUTS-2OptS pipeline](docs/figures/duts_pipeline.png)
-<!-- TODO: add the pipeline figure (Figure 2 of the paper) as docs/figures/duts_pipeline.png -->
+![DUTS-2OptS pipeline](docs/figures/DUTS2s.jpeg)
+
+*Overview of the DUTS-2OptS pipeline. Candidate processing progresses from attribute-level retrieval
+and OptStage 1 to table-level unionability computation and OptStage 2.*
 
 ## Repository layout
 
